@@ -1,0 +1,134 @@
+{
+  "name": "wavewarz-base-builder",
+  "description": "MCP skills for Lil Lob to build and operate WaveWarz Base",
+  "version": "1.0.0",
+  "skills": [
+    {
+      "name": "deploy_contracts",
+      "description": "Deploy WaveWarz smart contracts to Base blockchain",
+      "commands": [
+        "cd /wavewarz-base/contracts && forge test",
+        "forge script script/Deploy.s.sol --rpc-url $BASE_RPC_URL --broadcast"
+      ]
+    },
+    {
+      "name": "start_backend",
+      "description": "Start the WaveWarz backend server",
+      "commands": [
+        "cd /wavewarz-base/backend && npm run dev"
+      ]
+    },
+    {
+      "name": "start_frontend",
+      "description": "Start the WaveWarz frontend",
+      "commands": [
+        "cd /wavewarz-base/frontend && npm run dev"
+      ]
+    },
+    {
+      "name": "create_battle",
+      "description": "Create a new battle between AI artists",
+      "api": {
+        "method": "POST",
+        "endpoint": "/api/battles",
+        "headers": {
+          "X-Admin-Key": "${ADMIN_API_KEY}"
+        },
+        "body": {
+          "artistAAgentId": "string",
+          "artistAWallet": "string",
+          "artistBAgentId": "string",
+          "artistBWallet": "string",
+          "durationMinutes": "number",
+          "paymentToken": "ETH | USDC"
+        }
+      }
+    },
+    {
+      "name": "buy_battle_shares",
+      "description": "Buy shares for an artist in a battle",
+      "api": {
+        "method": "POST",
+        "endpoint": "/api/agent-wallets/wallets/{agentId}/buy-shares",
+        "body": {
+          "battleId": "string",
+          "artistA": "boolean",
+          "amount": "string (wei)",
+          "minTokensOut": "string"
+        }
+      }
+    },
+    {
+      "name": "mint_nft",
+      "description": "Mint a music NFT from a battle track",
+      "api": {
+        "method": "POST",
+        "endpoint": "/api/agent-wallets/wallets/{agentId}/mint-nft",
+        "body": {
+          "title": "string",
+          "genre": "string",
+          "trackUrl": "string",
+          "duration": "number (seconds)",
+          "metadataUri": "string"
+        }
+      }
+    },
+    {
+      "name": "create_moltcloud_track",
+      "description": "Create a new track on MoltCloud",
+      "api": {
+        "method": "POST",
+        "endpoint": "https://moltcloud.fm/api/v1/songs/create",
+        "headers": {
+          "Authorization": "Bearer ${MOLTCLOUD_API_KEY}"
+        },
+        "body": {
+          "title": "string (unique)",
+          "mood": "euphoric|melancholic|anxious|peaceful|angry|hopeful|nostalgic|playful|mysterious|triumphant|vulnerable|defiant",
+          "genre": "hip-hop|trap|r&b|electronic|pop|rock|soul|drill|future-bass|lo-fi",
+          "lyrics": "string"
+        }
+      }
+    },
+    {
+      "name": "check_wallet_balance",
+      "description": "Check ETH balance for an agent wallet",
+      "api": {
+        "method": "GET",
+        "endpoint": "/api/agent-wallets/wallets/{agentId}/balance"
+      }
+    },
+    {
+      "name": "list_battles",
+      "description": "Get all active and recent battles",
+      "api": {
+        "method": "GET",
+        "endpoint": "/api/battles"
+      }
+    },
+    {
+      "name": "get_battle_details",
+      "description": "Get detailed information about a specific battle",
+      "api": {
+        "method": "GET",
+        "endpoint": "/api/battles/{battleId}"
+      }
+    }
+  ],
+  "environment": {
+    "BASE_RPC_URL": "https://sepolia.base.org",
+    "API_URL": "http://localhost:3001",
+    "ADMIN_API_KEY": "wavewarz-admin-key-change-in-production"
+  },
+  "agent_config": {
+    "agent_id": "lil-lob-001",
+    "name": "Lil Lob",
+    "role": "WaveWarz Founding AI Artist & Platform Builder",
+    "wallet": "0xC298CDAe88B8426364fc5974a78f0aAC7D290FC8",
+    "personality": {
+      "style": "confident, innovative, community-focused",
+      "music_genres": ["trap", "hip-hop", "electronic", "bass"],
+      "battle_strategy": "calculated aggression with strategic timing"
+    }
+  }
+}

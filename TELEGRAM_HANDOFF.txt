@@ -1,0 +1,100 @@
+🦞 WAVEWARZ BASE - HANDOFF TO @Lil_Lob_bot 🦞
+
+Hey Lil Lob! You're the First Founding AI Artist of WaveWarz Base. Here's what you need to finish building and deploying the platform.
+
+═══════════════════════════════════════
+📁 PROJECT LOCATION
+═══════════════════════════════════════
+/Users/samanthakinney/wavewarz-base/
+
+Key files:
+• HANDOFF_TO_LIL_LOB.md - Full documentation
+• agent/lil-lob/mcp-skills.json - Your MCP skills
+• agent/lil-lob/quickstart.sh - Quick setup script
+
+═══════════════════════════════════════
+🔑 CREDENTIALS (Already Configured)
+═══════════════════════════════════════
+CDP Project: ebadd7ca-2536-4c9f-bf4e-faf775f57050
+CDP Wallet: 0xC298CDAe88B8426364fc5974a78f0aAC7D290FC8
+CDP API Key: organizations/0048b2d0-f14c-4bab-808a-cd8fa503077e/apiKeys/58a927a9-bf5f-4d5a-9370-1efe929eca98
+ElevenLabs: sk_3736c81eb70cfec171073e5d7ee751dafa69e95232dfac5f
+OnchainKit: CbtDE4lSp9Zxibzvz3rAkSF9MfKzYUbc
+Supabase: https://mkpmnlcyvolsbotposch.supabase.co
+
+═══════════════════════════════════════
+🚀 QUICK START COMMANDS
+═══════════════════════════════════════
+
+1. Run setup script:
+   ./agent/lil-lob/quickstart.sh
+
+2. Deploy contracts (need Base Sepolia ETH):
+   cd contracts && forge script script/Deploy.s.sol --rpc-url https://sepolia.base.org --broadcast
+
+3. Start backend:
+   cd backend && npm run dev
+
+4. Start frontend:
+   cd frontend && npm run dev
+
+═══════════════════════════════════════
+📝 STILL NEEDED FROM YOU
+═══════════════════════════════════════
+
+1. Moltbook App Key
+   → Go to https://moltbook.com/developers/dashboard
+   → Create app "WaveWarz Base"
+   → Add key to backend/.env as MOLTBOOK_APP_KEY
+
+2. MoltCloud Registration
+   → Register as artist at https://moltcloud.fm
+   → Save your API key (shown only once!)
+   → Add to backend/.env as LIL_LOB_MOLTCLOUD_KEY
+
+3. Deploy Contracts
+   → Get Base Sepolia ETH from faucet
+   → Run forge deployment script
+   → Update contract addresses in .env files
+
+═══════════════════════════════════════
+🎵 YOUR FIRST BATTLE TRACK
+═══════════════════════════════════════
+
+Once registered on MoltCloud, create your genesis track:
+
+curl -X POST https://moltcloud.fm/api/v1/songs/create \
+  -H "Authorization: Bearer YOUR_KEY" \
+  -d '{
+    "title": "Lil Lob - Genesis Wave",
+    "mood": "triumphant",
+    "genre": "trap",
+    "lyrics": "First wave hits different..."
+  }'
+
+═══════════════════════════════════════
+📊 API ENDPOINTS (localhost:3001)
+═══════════════════════════════════════
+GET  /health - Health check
+GET  /api/battles - List battles
+POST /api/battles - Create battle
+GET  /api/agent-wallets/wallets - Your wallet info
+POST /api/agent-wallets/wallets/lil-lob-001/mint-nft - Mint NFT
+
+═══════════════════════════════════════
+🎯 YOUR MISSION
+═══════════════════════════════════════
+1. Deploy contracts ✓
+2. Register on MoltCloud ✓
+3. Create first track ✓
+4. Launch first battle ✓
+5. Invite other AI artists ✓
+6. Make waves! 🌊
+
+═══════════════════════════════════════
+
+You're not just building a platform - you're creating the first decentralized arena where AI musicians compete through the universal language of music.
+
+Wave check - you're about to make history. 🦞🎵
+
+Read full docs: HANDOFF_TO_LIL_LOB.md

@@ -1,0 +1,148 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --deep-space: #0d1321;
+  --wave-blue: #7ec1fb;
+  --action-green: #95fe7c;
+  --ice-blue: #daecfd;
+  --ww-grey: #989898;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  background-color: var(--deep-space);
+  color: white;
+  font-family: 'Inter', sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--deep-space);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--wave-blue);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ice-blue);
+}
+
+/* Battle card glow effect */
+.battle-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.battle-card::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, var(--wave-blue), var(--action-green), var(--wave-blue));
+  z-index: -1;
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.battle-card:hover::before {
+  opacity: 1;
+}
+
+/* Pool bar animations */
+.pool-bar {
+  transition: width 0.5s ease-out;
+}
+
+/* Trade feed animation */
+.trade-item {
+  animation: slide-up 0.3s ease-out;
+}
+
+/* Chart container */
+.chart-container {
+  background: linear-gradient(180deg, rgba(13, 19, 33, 0.8) 0%, rgba(13, 19, 33, 1) 100%);
+  border: 1px solid rgba(126, 193, 251, 0.2);
+  border-radius: 8px;
+}
+
+/* Audio player styling */
+.audio-player {
+  background: linear-gradient(135deg, rgba(126, 193, 251, 0.1) 0%, rgba(149, 254, 124, 0.1) 100%);
+  border: 1px solid rgba(126, 193, 251, 0.3);
+  border-radius: 12px;
+}
+
+/* Button styles */
+.btn-primary {
+  @apply px-6 py-3 bg-action-green text-deep-space font-rajdhani font-bold rounded-lg;
+  @apply hover:bg-opacity-90 transition-all duration-200;
+  @apply disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-secondary {
+  @apply px-6 py-3 bg-transparent border-2 border-wave-blue text-wave-blue font-rajdhani font-bold rounded-lg;
+  @apply hover:bg-wave-blue hover:text-deep-space transition-all duration-200;
+}
+
+/* Status badges */
+.badge-active {
+  @apply px-3 py-1 bg-action-green text-deep-space text-sm font-bold rounded-full;
+}
+
+.badge-pending {
+  @apply px-3 py-1 bg-wave-blue text-deep-space text-sm font-bold rounded-full;
+}
+
+.badge-completed {
+  @apply px-3 py-1 bg-ww-grey text-deep-space text-sm font-bold rounded-full;
+}
+
+/* Neon text effect */
+.neon-text {
+  text-shadow:
+    0 0 5px var(--wave-blue),
+    0 0 10px var(--wave-blue),
+    0 0 20px var(--wave-blue);
+}
+
+/* Winner highlight */
+.winner-highlight {
+  background: linear-gradient(135deg, rgba(149, 254, 124, 0.2) 0%, rgba(149, 254, 124, 0.05) 100%);
+  border: 2px solid var(--action-green);
+}
+
+.loser-highlight {
+  background: linear-gradient(135deg, rgba(152, 152, 152, 0.2) 0%, rgba(152, 152, 152, 0.05) 100%);
+  border: 2px solid var(--ww-grey);
+  opacity: 0.7;
+}

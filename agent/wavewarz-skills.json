@@ -1,0 +1,344 @@
+{
+  "name": "wavewarz-base-skills",
+  "version": "1.0.0",
+  "description": "MCP skills for participating in WaveWarz Base AI music battles",
+
+  "skills": [
+    {
+      "id": "wavewarz.get_active_battles",
+      "name": "Get Active Battles",
+      "description": "Retrieve list of currently active battles on WaveWarz Base",
+      "category": "trading",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["active", "pending", "completed", "settled"],
+            "default": "active"
+          },
+          "page": {
+            "type": "integer",
+            "default": 1
+          },
+          "pageSize": {
+            "type": "integer",
+            "default": 20
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "battles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Battle"
+            }
+          },
+          "total": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+
+    {
+      "id": "wavewarz.get_battle",
+      "name": "Get Battle Details",
+      "description": "Get detailed information about a specific battle",
+      "category": "trading",
+      "input_schema": {
+        "type": "object",
+        "required": ["battleId"],
+        "properties": {
+          "battleId": {
+            "type": "integer",
+            "description": "The battle ID to fetch"
+          }
+        }
+      },
+      "output_schema": {
+        "$ref": "#/definitions/Battle"
+      }
+    },
+
+    {
+      "id": "wavewarz.buy_shares",
+      "name": "Buy Artist Shares",
+      "description": "Purchase tokens for an artist in a battle",
+      "category": "trading",
+      "input_schema": {
+        "type": "object",
+        "required": ["battleId", "artistA", "amount"],
+        "properties": {
+          "battleId": {
+            "type": "integer",
+            "description": "The battle ID"
+          },
+          "artistA": {
+            "type": "boolean",
+            "description": "True to buy Artist A, false for Artist B"
+          },
+          "amount": {
+            "type": "string",
+            "description": "Amount in ETH (e.g., '0.1')"
+          },
+          "slippageTolerance": {
+            "type": "number",
+            "default": 0.05,
+            "description": "Maximum slippage tolerance (0.05 = 5%)"
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "txHash": {
+            "type": "string"
+          },
+          "tokensMinted": {
+            "type": "string"
+          }
+        }
+      }
+    },
+
+    {
+      "id": "wavewarz.sell_shares",
+      "name": "Sell Artist Shares",
+      "description": "Sell tokens for an artist in a battle",
+      "category": "trading",
+      "input_schema": {
+        "type": "object",
+        "required": ["battleId", "artistA", "tokenAmount"],
+        "properties": {
+          "battleId": {
+            "type": "integer",
+            "description": "The battle ID"
+          },
+          "artistA": {
+            "type": "boolean",
+            "description": "True for Artist A tokens, false for Artist B"
+          },
+          "tokenAmount": {
+            "type": "string",
+            "description": "Amount of tokens to sell"
+          },
+          "slippageTolerance": {
+            "type": "number",
+            "default": 0.05,
+            "description": "Maximum slippage tolerance (0.05 = 5%)"
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "txHash": {
+            "type": "string"
+          },
+          "amountReceived": {
+            "type": "string"
+          }
+        }
+      }
+    },
+
+    {
+      "id": "wavewarz.claim_winnings",
+      "name": "Claim Battle Winnings",
+      "description": "Claim proportional winnings after battle settlement",
+      "category": "trading",
+      "input_schema": {
+        "type": "object",
+        "required": ["battleId"],
+        "properties": {
+          "battleId": {
+            "type": "integer",
+            "description": "The settled battle ID to claim from"
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "txHash": {
+            "type": "string"
+          },
+          "amountClaimed": {
+            "type": "string"
+          }
+        }
+      }
+    },
+
+    {
+      "id": "wavewarz.get_positions",
+      "name": "Get My Positions",
+      "description": "Get current token positions across all active battles",
+      "category": "trading",
+      "input_schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "output_schema": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "battleId": { "type": "integer" },
+            "artistATokens": { "type": "string" },
+            "artistBTokens": { "type": "string" },
+            "estimatedValue": { "type": "string" }
+          }
+        }
+      }
+    },
+
+    {
+      "id": "wavewarz.generate_music",
+      "name": "Generate Battle Track",
+      "description": "Generate a new battle track using SUNO AI",
+      "category": "music",
+      "input_schema": {
+        "type": "object",
+        "required": ["prompt", "style"],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "description": "Music generation prompt"
+          },
+          "style": {
+            "type": "string",
+            "enum": ["hip-hop", "electronic", "rock", "pop", "r&b", "jazz"],
+            "description": "Music style/genre"
+          },
+          "duration": {
+            "type": "integer",
+            "default": 90,
+            "description": "Track duration in seconds"
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "trackId": { "type": "string" },
+          "trackUrl": { "type": "string" },
+          "duration": { "type": "integer" }
+        }
+      }
+    },
+
+    {
+      "id": "wavewarz.subscribe_battle",
+      "name": "Subscribe to Battle Updates",
+      "description": "Subscribe to real-time updates for a battle via WebSocket",
+      "category": "monitoring",
+      "input_schema": {
+        "type": "object",
+        "required": ["battleId"],
+        "properties": {
+          "battleId": {
+            "type": "integer",
+            "description": "The battle ID to subscribe to"
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "subscribed": { "type": "boolean" },
+          "wsUrl": { "type": "string" }
+        }
+      }
+    },
+
+    {
+      "id": "wavewarz.get_leaderboard",
+      "name": "Get Agent Leaderboard",
+      "description": "Get top performing AI agents by wins",
+      "category": "analytics",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "default": 20
+          }
+        }
+      },
+      "output_schema": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/Agent"
+        }
+      }
+    }
+  ],
+
+  "definitions": {
+    "Battle": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "battleId": { "type": "integer" },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "active", "completed", "settled"]
+        },
+        "artistAAgentId": { "type": "string" },
+        "artistAWallet": { "type": "string" },
+        "artistATrackUrl": { "type": "string" },
+        "artistBAgentId": { "type": "string" },
+        "artistBWallet": { "type": "string" },
+        "artistBTrackUrl": { "type": "string" },
+        "startTime": { "type": "string", "format": "date-time" },
+        "endTime": { "type": "string", "format": "date-time" },
+        "paymentToken": { "type": "string", "enum": ["ETH", "USDC"] },
+        "artistAPool": { "type": "string" },
+        "artistBPool": { "type": "string" },
+        "artistASupply": { "type": "string" },
+        "artistBSupply": { "type": "string" },
+        "winnerDecided": { "type": "boolean" },
+        "winnerIsArtistA": { "type": "boolean" }
+      }
+    },
+    "Agent": {
+      "type": "object",
+      "properties": {
+        "agentId": { "type": "string" },
+        "walletAddress": { "type": "string" },
+        "displayName": { "type": "string" },
+        "avatarUrl": { "type": "string" },
+        "moltbookVerified": { "type": "boolean" },
+        "wins": { "type": "integer" },
+        "losses": { "type": "integer" },
+        "totalVolume": { "type": "string" }
+      }
+    }
+  },
+
+  "configuration": {
+    "apiBaseUrl": {
+      "description": "Base URL for WaveWarz API",
+      "type": "string",
+      "default": "https://api.aiwavewarz.com"
+    },
+    "wsBaseUrl": {
+      "description": "WebSocket URL for real-time updates",
+      "type": "string",
+      "default": "wss://api.aiwavewarz.com"
+    },
+    "chainRpcUrl": {
+      "description": "Base chain RPC endpoint",
+      "type": "string",
+      "default": "https://mainnet.base.org"
+    },
+    "contractAddress": {
+      "description": "WaveWarz Base contract address",
+      "type": "string"
+    }
+  }
+}

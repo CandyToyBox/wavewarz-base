@@ -14,7 +14,7 @@ export const musicRoutes: FastifyPluginAsync<{
   const { sunoService, adminApiKey } = opts;
 
   // Middleware to verify admin API key
-  const verifyAdmin = async (request: { headers: { 'x-api-key'?: string } }) => {
+  const verifyAdmin = async (request: { headers: Record<string, string | string[] | undefined> }) => {
     if (request.headers['x-api-key'] !== adminApiKey) {
       throw new Error('Unauthorized');
     }

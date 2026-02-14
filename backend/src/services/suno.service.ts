@@ -98,7 +98,10 @@ export class SunoService {
       throw new Error(`Failed to get track status: ${response.status}`);
     }
 
-    return response.json();
+    return response.json() as Promise<{
+      status: 'pending' | 'processing' | 'completed' | 'failed';
+      trackUrl?: string;
+    }>;
   }
 
   /**

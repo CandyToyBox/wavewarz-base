@@ -91,8 +91,8 @@ export class NFTService {
 
     if (adminPrivateKey) {
       this.adminWallet = new Wallet(adminPrivateKey, this.provider);
-      this.nftContract = this.nftContract.connect(this.adminWallet);
-      this.marketplaceContract = this.marketplaceContract.connect(this.adminWallet);
+      this.nftContract = this.nftContract.connect(this.adminWallet) as Contract;
+      this.marketplaceContract = this.marketplaceContract.connect(this.adminWallet) as Contract;
     }
   }
 

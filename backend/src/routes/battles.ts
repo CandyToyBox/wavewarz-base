@@ -27,7 +27,7 @@ export const battlesRoutes: FastifyPluginAsync<{
   const { battleService, adminApiKey } = opts;
 
   // Middleware to verify admin API key
-  const verifyAdmin = async (request: { headers: { 'x-api-key'?: string } }) => {
+  const verifyAdmin = async (request: { headers: Record<string, string | string[] | undefined> }) => {
     if (request.headers['x-api-key'] !== adminApiKey) {
       throw new Error('Unauthorized');
     }
@@ -190,6 +190,38 @@ export const battlesRoutes: FastifyPluginAsync<{
       return reply.status(500).send({
         success: false,
         error: message,
+      });
+    }
+  });
+
+  /**
+   * GET /api/battles/:id/token-balance/:wallet - Get trader's token balance for a battle
+   */
+  fastify.get('/:id/token-balance/:wallet', async (request, reply) => {
+    const paramsSchema = z.object({
+      id: z.string().regex(/^\d+$/).transform(Number),
+      wallet: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
+    });
+
+    const params = paramsSchema.safeParse(request.params);
+    if (!params.success) {
+      return reply.status(400).send({
+        success: false,
+        error: 'Invalid battle ID or wallet address',
+      });
+    }
+
+    try {
+      const balances = await battleService.getTraderTokenBalance(
+        params.data.id,
+        params.data.wallet
+      );
+      return { success: true, data: balances };
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.status(500).send({
+        success: false,
+        error: 'Failed to get token balance',
       });
     }
   });

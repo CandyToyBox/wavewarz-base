@@ -5,6 +5,16 @@
  */
 
 import { CdpClient } from '@coinbase/cdp-sdk';
+import { ethers } from 'ethers';
+
+// WaveWarz contract ABI fragments for calldata encoding
+const WAVEWARZ_CONTRACT_ABI = [
+  'function buyShares(uint64 battleId, bool artistA, uint256 amount, uint256 minTokensOut, uint64 deadline) payable returns (uint256)',
+  'function sellShares(uint64 battleId, bool artistA, uint256 tokenAmount, uint256 minAmountOut, uint64 deadline) returns (uint256)',
+  'function endBattle(uint64 battleId, bool winnerIsArtistA)',
+  'function claimShares(uint64 battleId) returns (uint256)',
+  'function initializeBattle(tuple(uint64 battleId, uint64 battleDuration, uint64 startTime, address artistAWallet, address artistBWallet, address wavewarzWallet, address paymentToken) params)',
+];
 
 // Agent wallet configuration
 interface AgentWalletConfig {
@@ -171,9 +181,11 @@ class CdpService {
         const balances = await this.client.evm.listTokenBalances({
           address: walletData.address,
           network: 'base-sepolia',
-        });
+        }) as any;
         // Find ETH balance
-        const ethBalance = balances.find((b: any) => b.token?.symbol === 'ETH');
+        const ethBalance = Array.isArray(balances)
+          ? balances.find((b: any) => b.token?.symbol === 'ETH')
+          : undefined;
         return ethBalance?.amount || '0.0';
       }
       return '0.0';
@@ -206,8 +218,8 @@ class CdpService {
         address: walletData.address,
         network: 'base-sepolia',
         transaction: {
-          to,
-          value: amount,
+          to: to as `0x${string}`,
+          value: BigInt(amount),
         },
       });
 
@@ -219,7 +231,7 @@ class CdpService {
   }
 
   /**
-   * Execute contract call from agent wallet
+   * Execute contract call from agent wallet with ABI-encoded calldata
    */
   async executeContract(
     agentId: string,
@@ -240,15 +252,18 @@ class CdpService {
     try {
       if (!this.client) throw new Error('CDP client not initialized');
 
-      // CDP SDK v1.x: use sendTransaction with encoded calldata
-      // For now, using a simplified approach - production would encode properly
+      // Look up ABI fragment for this method, use provided abi or fall back to known ABIs
+      const abiFragments = abi || WAVEWARZ_CONTRACT_ABI;
+      const iface = new ethers.Interface(abiFragments);
+      const calldata = iface.encodeFunctionData(method, args);
+
       const result = await this.client.evm.sendTransaction({
         address: walletData.address,
         network: 'base-sepolia',
         transaction: {
-          to: contractAddress,
-          value: value || '0',
-          data: '0x', // Would need proper ABI encoding in production
+          to: contractAddress as `0x${string}`,
+          value: BigInt(value || '0'),
+          data: calldata as `0x${string}`,
         },
       });
 
@@ -276,8 +291,24 @@ class CdpService {
       agentId,
       battleContract,
       'buyShares',
-      [battleId.toString(), artistA, amount, minTokensOut, deadline.toString()],
+      [battleId, artistA, BigInt(amount), BigInt(minTokensOut), deadline],
       amount
+    );
+  }
+
+  /**
+   * Claim battle shares (trader withdraws proportional ETH after settlement)
+   */
+  async claimBattleShares(
+    agentId: string,
+    battleContract: string,
+    battleId: bigint
+  ): Promise<{ txHash: string }> {
+    return this.executeContract(
+      agentId,
+      battleContract,
+      'claimShares',
+      [battleId]
     );
   }
 
@@ -298,7 +329,7 @@ class CdpService {
       agentId,
       battleContract,
       'sellShares',
-      [battleId.toString(), artistA, tokenAmount, minEthOut, deadline.toString()]
+      [battleId, artistA, BigInt(tokenAmount), BigInt(minEthOut), deadline]
     );
   }
 

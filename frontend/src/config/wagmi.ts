@@ -29,7 +29,7 @@ export const CONTRACTS = {
   },
   // Base Sepolia Testnet
   testnet: {
-    waveWarzBase: '' as `0x${string}`,
+    waveWarzBase: '0xe28709DF5c77eD096f386510240A4118848c1098' as `0x${string}`,
     musicNFT: '' as `0x${string}`,
     marketplace: '' as `0x${string}`,
   },

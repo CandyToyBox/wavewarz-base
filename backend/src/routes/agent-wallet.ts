@@ -22,6 +22,10 @@ interface SellSharesBody {
   minEthOut: string;
 }
 
+interface ClaimSharesBody {
+  battleId: string;
+}
+
 interface MintNFTBody {
   title: string;
   genre: string;
@@ -199,6 +203,50 @@ export async function agentWalletRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({
           success: false,
           error: error instanceof Error ? error.message : 'Transaction failed',
+        });
+      }
+    }
+  );
+
+  // Claim battle shares (trader withdraws proportional ETH after settlement)
+  fastify.post(
+    '/wallets/:agentId/claim-shares',
+    async (
+      request: FastifyRequest<{
+        Params: { agentId: string };
+        Body: ClaimSharesBody;
+      }>,
+      reply: FastifyReply
+    ) => {
+      const { agentId } = request.params;
+      const { battleId } = request.body;
+
+      const battleContract = process.env.WAVEWARZ_CONTRACT_ADDRESS;
+      if (!battleContract) {
+        return reply.status(500).send({
+          success: false,
+          error: 'Battle contract not configured',
+        });
+      }
+
+      try {
+        const result = await cdpService.claimBattleShares(
+          agentId,
+          battleContract,
+          BigInt(battleId)
+        );
+
+        return {
+          success: true,
+          data: {
+            txHash: result.txHash,
+            status: 'pending',
+          },
+        };
+      } catch (error) {
+        return reply.status(400).send({
+          success: false,
+          error: error instanceof Error ? error.message : 'Claim failed',
         });
       }
     }

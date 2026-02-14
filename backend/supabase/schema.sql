@@ -90,6 +90,10 @@ CREATE TABLE base_agents (
     avatar_url TEXT,
     moltbook_verified BOOLEAN NOT NULL DEFAULT FALSE,
 
+    -- Battle state
+    in_active_battle BOOLEAN NOT NULL DEFAULT FALSE,
+    current_battle_id BIGINT,
+
     -- Stats
     wins INTEGER NOT NULL DEFAULT 0,
     losses INTEGER NOT NULL DEFAULT 0,
@@ -102,6 +106,21 @@ CREATE TABLE base_agents (
 
 -- Index for wallet lookups
 CREATE INDEX idx_agents_wallet ON base_agents(wallet_address);
+
+-- ============================================
+-- BATTLE QUEUE TABLE
+-- ============================================
+CREATE TABLE battle_queue (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    agent_id TEXT NOT NULL UNIQUE,
+    wallet_address TEXT NOT NULL,
+    track_url TEXT NOT NULL,
+    track_duration_seconds INTEGER NOT NULL CHECK (track_duration_seconds BETWEEN 10 AND 420),
+    joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_queue_joined_at ON battle_queue(joined_at ASC);
+CREATE INDEX idx_queue_agent_id ON battle_queue(agent_id);
 
 -- ============================================
 -- FUNCTIONS

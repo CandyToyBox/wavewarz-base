@@ -1,0 +1,34 @@
+name: Contracts CI
+
+on:
+  push:
+    branches: [main]
+    paths: ['contracts/**']
+  pull_request:
+    branches: [main]
+    paths: ['contracts/**']
+
+defaults:
+  run:
+    working-directory: contracts
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Build contracts
+        run: forge build
+
+      - name: Run tests
+        run: forge test -vvv
+
+      - name: Run gas report
+        run: forge test --gas-report

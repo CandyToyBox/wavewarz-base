@@ -67,7 +67,7 @@ contract WaveWarzMusicNFT is ERC721, ERC721URIStorage, ERC721Royalty, Ownable {
 
     constructor(
         address _platformWallet
-    ) ERC721("WaveWarz Music", "WWMUSIC") Ownable(msg.sender) {
+    ) ERC721("WaveWarz Music", "WWMUSIC") {
         platformWallet = _platformWallet;
     }
 

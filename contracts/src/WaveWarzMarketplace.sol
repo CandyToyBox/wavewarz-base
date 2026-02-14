@@ -120,7 +120,7 @@ contract WaveWarzMarketplace is IERC721Receiver, ReentrancyGuard, Ownable {
     constructor(
         address _nftContract,
         address _platformWallet
-    ) Ownable(msg.sender) {
+    ) {
         if (_nftContract == address(0)) revert InvalidNFTContract();
         nftContract = _nftContract;
         platformWallet = _platformWallet;

@@ -1,4 +1,4 @@
-import { ethers, Contract, Wallet, Provider, JsonRpcProvider } from 'ethers';
+import { ethers, Contract, Wallet, JsonRpcProvider } from 'ethers';
 import type { OnChainBattle } from '../types/index.js';
 
 // Contract ABI (minimal for our needs)
@@ -50,7 +50,7 @@ export class BlockchainService {
       try {
         this.adminWallet = new Wallet(adminPrivateKey, this.provider);
         if (this.contract) {
-          this.contract = this.contract.connect(this.adminWallet);
+          this.contract = this.contract.connect(this.adminWallet) as Contract;
         }
       } catch (error) {
         console.warn('⚠️  Invalid ADMIN_PRIVATE_KEY format. Running in read-only mode.');
@@ -165,6 +165,31 @@ export class BlockchainService {
     ]);
 
     return { artistAToken, artistBToken };
+  }
+
+  /**
+   * Get a trader's token balance for a specific battle side
+   */
+  async getTraderTokenBalance(
+    battleId: number,
+    traderAddress: string,
+    artistA: boolean
+  ): Promise<bigint> {
+    if (!this.contract) {
+      throw new Error('Contract not configured');
+    }
+
+    const tokenAddress = artistA
+      ? await this.contract.getArtistAToken(battleId)
+      : await this.contract.getArtistBToken(battleId);
+
+    const tokenContract = new Contract(
+      tokenAddress,
+      ['function balanceOf(address) view returns (uint256)'],
+      this.provider
+    );
+
+    return tokenContract.balanceOf(traderAddress);
   }
 
   /**

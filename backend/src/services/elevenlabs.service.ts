@@ -112,7 +112,7 @@ class ElevenLabsService {
     );
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+      const error = await response.json().catch(() => ({ detail: 'Unknown error' })) as { detail?: string };
       throw new Error(`ElevenLabs API error: ${error.detail || response.statusText}`);
     }
 
@@ -227,7 +227,7 @@ class ElevenLabsService {
       throw new Error(`Failed to fetch voices: ${response.statusText}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as { voices: VoiceInfo[] };
     return data.voices;
   }
 
@@ -253,7 +253,11 @@ class ElevenLabsService {
       throw new Error(`Failed to fetch subscription: ${response.statusText}`);
     }
 
-    return response.json();
+    return response.json() as Promise<{
+      character_count: number;
+      character_limit: number;
+      can_use_instant_voice_cloning: boolean;
+    }>;
   }
 }
 

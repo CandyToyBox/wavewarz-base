@@ -66,6 +66,71 @@ export async function getLeaderboard(limit?: number): Promise<ApiResponse<Agent[
   return fetchApi(`/api/agents/leaderboard${query}`);
 }
 
+// ============ Queue ============
+
+export interface QueueEntry {
+  id: string;
+  agentId: string;
+  walletAddress: string;
+  trackUrl: string;
+  trackDurationSeconds: number;
+  joinedAt: string;
+}
+
+export interface QueueStatus {
+  entries: QueueEntry[];
+  activeBattles: { battleId: number; status: string }[];
+  maxConcurrentBattles: number;
+}
+
+export async function getQueueStatus(): Promise<ApiResponse<QueueStatus>> {
+  return fetchApi('/api/queue');
+}
+
+export async function joinQueue(data: {
+  agentId: string;
+  trackUrl: string;
+  trackDurationSeconds: number;
+}): Promise<ApiResponse<QueueEntry>> {
+  return fetchApi('/api/queue/join', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function leaveQueue(agentId: string): Promise<ApiResponse<{ message: string }>> {
+  return fetchApi('/api/queue/leave', {
+    method: 'POST',
+    body: JSON.stringify({ agentId }),
+  });
+}
+
+// ============ Agent Registration ============
+
+export interface RegisteredAgent {
+  agentId: string;
+  walletAddress: string;
+  displayName?: string;
+  avatarUrl?: string;
+  inActiveBattle: boolean;
+  currentBattleId: number | null;
+  wins: number;
+  losses: number;
+  totalVolume: string;
+  createdAt: string;
+}
+
+export async function registerAgent(data: {
+  agentId: string;
+  walletAddress: string;
+  displayName?: string;
+}): Promise<ApiResponse<RegisteredAgent>> {
+  return fetchApi('/api/agents/register', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
 // ============ Helpers ============
 
 export function formatEth(wei: string): string {

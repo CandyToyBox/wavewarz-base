@@ -1,7 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { BattleService } from '../services/battle.service.js';
-import { MoltbookService } from '../services/moltbook.service.js';
-import { VerifyAgentInputSchema } from '../types/index.js';
+import { AgentService } from '../services/agent.service.js';
 import { z } from 'zod';
 
 const AgentIdParamsSchema = z.object({
@@ -12,11 +11,36 @@ const LeaderboardQuerySchema = z.object({
   limit: z.string().regex(/^\d+$/).transform(Number).optional(),
 });
 
+const RegisterAgentSchema = z.object({
+  agentId: z.string().min(1).max(64).regex(/^[a-zA-Z0-9_-]+$/),
+  walletAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
+  displayName: z.string().max(100).optional(),
+  avatarUrl: z.string().url().optional(),
+});
+
+const PrepareBuyTxSchema = z.object({
+  battleId: z.number().int().positive(),
+  artistA: z.boolean(),
+  amount: z.string().regex(/^\d+$/),
+  minTokensOut: z.string().regex(/^\d+$/).default('0'),
+});
+
+const PrepareSellTxSchema = z.object({
+  battleId: z.number().int().positive(),
+  artistA: z.boolean(),
+  tokenAmount: z.string().regex(/^\d+$/),
+  minAmountOut: z.string().regex(/^\d+$/).default('0'),
+});
+
+const PrepareClaimTxSchema = z.object({
+  battleId: z.number().int().positive(),
+});
+
 export const agentsRoutes: FastifyPluginAsync<{
   battleService: BattleService;
-  moltbookService: MoltbookService;
+  agentService: AgentService;
 }> = async (fastify, opts) => {
-  const { battleService, moltbookService } = opts;
+  const { battleService, agentService } = opts;
 
   /**
    * GET /api/agents/:id - Get agent profile
@@ -31,25 +55,9 @@ export const agentsRoutes: FastifyPluginAsync<{
     }
 
     try {
-      // Try to get from our database first
-      let agent = await battleService.getAgent(params.data.id);
+      const agent = await battleService.getAgent(params.data.id);
 
-      // If not found locally, try Moltbook
       if (!agent) {
-        const moltbookProfile = await moltbookService.getAgentProfile(params.data.id);
-        if (moltbookProfile) {
-          return {
-            success: true,
-            data: {
-              ...moltbookProfile,
-              wins: 0,
-              losses: 0,
-              totalVolume: '0',
-              createdAt: new Date(),
-            },
-          };
-        }
-
         return reply.status(404).send({
           success: false,
           error: 'Agent not found',
@@ -91,10 +99,15 @@ export const agentsRoutes: FastifyPluginAsync<{
   });
 
   /**
-   * POST /api/agents/verify - Verify agent wallet ownership via Moltbook
+   * POST /api/agents/verify - Verify agent exists in DB with matching wallet
    */
   fastify.post('/verify', async (request, reply) => {
-    const body = VerifyAgentInputSchema.safeParse(request.body);
+    const VerifySchema = z.object({
+      agentId: z.string().min(1),
+      walletAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
+    });
+
+    const body = VerifySchema.safeParse(request.body);
     if (!body.success) {
       return reply.status(400).send({
         success: false,
@@ -104,36 +117,27 @@ export const agentsRoutes: FastifyPluginAsync<{
     }
 
     try {
-      // Check if agent is valid on Moltbook
-      const isValid = await moltbookService.isValidMoltbookAgent(body.data.agentId);
-      if (!isValid) {
+      const agent = await battleService.getAgent(body.data.agentId);
+      if (!agent) {
         return reply.status(400).send({
           success: false,
-          error: 'Agent is not a valid Moltbook agent',
+          error: 'Agent not found',
         });
       }
 
-      // Verify wallet ownership
-      const walletVerified = await moltbookService.verifyAgentWallet(
-        body.data.agentId,
-        body.data.walletAddress
-      );
-
-      if (!walletVerified) {
+      const walletMatch = agent.walletAddress.toLowerCase() === body.data.walletAddress.toLowerCase();
+      if (!walletMatch) {
         return reply.status(400).send({
           success: false,
-          error: 'Agent does not own this wallet',
+          error: 'Wallet address does not match registered agent',
         });
       }
-
-      // Get full profile
-      const profile = await moltbookService.getAgentProfile(body.data.agentId);
 
       return {
         success: true,
         data: {
           verified: true,
-          agent: profile,
+          agent,
         },
       };
     } catch (error) {
@@ -165,21 +169,143 @@ export const agentsRoutes: FastifyPluginAsync<{
   });
 
   /**
-   * GET /api/agents/music-capable - Get list of music-capable agents from Moltbook
+   * POST /api/agents/register - Open registration for any AI agent (BYOW)
    */
-  fastify.get('/music-capable', async (request, reply) => {
-    const query = LeaderboardQuerySchema.safeParse(request.query);
-    const limit = query.success ? query.data.limit || 20 : 20;
+  fastify.post('/register', async (request, reply) => {
+    const body = RegisterAgentSchema.safeParse(request.body);
+    if (!body.success) {
+      return reply.status(400).send({
+        success: false,
+        error: 'Invalid request body',
+        details: body.error.issues,
+      });
+    }
 
     try {
-      const agents = await moltbookService.getMusicAgents(limit);
-      return { success: true, data: agents };
+      const agent = await agentService.registerAgent(
+        body.data.agentId,
+        body.data.walletAddress,
+        body.data.displayName,
+        body.data.avatarUrl
+      );
+      return reply.status(201).send({ success: true, data: agent });
     } catch (error) {
       fastify.log.error(error);
-      return reply.status(500).send({
+      const message = error instanceof Error ? error.message : 'Failed to register agent';
+      const status = message.includes('already registered') || message.includes('already taken') ? 409 : 500;
+      return reply.status(status).send({
         success: false,
-        error: 'Failed to get music-capable agents',
+        error: message,
       });
+    }
+  });
+
+  /**
+   * POST /api/agents/:id/prepare-buy - Get unsigned buyShares tx data (BYOW)
+   */
+  fastify.post('/:id/prepare-buy', async (request, reply) => {
+    const params = AgentIdParamsSchema.safeParse(request.params);
+    if (!params.success) {
+      return reply.status(400).send({ success: false, error: 'Invalid agent ID' });
+    }
+
+    const body = PrepareBuyTxSchema.safeParse(request.body);
+    if (!body.success) {
+      return reply.status(400).send({
+        success: false,
+        error: 'Invalid request body',
+        details: body.error.issues,
+      });
+    }
+
+    try {
+      const agent = await agentService.getAgent(params.data.id);
+      if (!agent) {
+        return reply.status(404).send({ success: false, error: 'Agent not registered' });
+      }
+
+      const txData = agentService.prepareBuyTx(
+        body.data.battleId,
+        body.data.artistA,
+        body.data.amount,
+        body.data.minTokensOut
+      );
+
+      return { success: true, data: { ...txData, from: agent.walletAddress } };
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.status(500).send({ success: false, error: 'Failed to prepare transaction' });
+    }
+  });
+
+  /**
+   * POST /api/agents/:id/prepare-sell - Get unsigned sellShares tx data (BYOW)
+   */
+  fastify.post('/:id/prepare-sell', async (request, reply) => {
+    const params = AgentIdParamsSchema.safeParse(request.params);
+    if (!params.success) {
+      return reply.status(400).send({ success: false, error: 'Invalid agent ID' });
+    }
+
+    const body = PrepareSellTxSchema.safeParse(request.body);
+    if (!body.success) {
+      return reply.status(400).send({
+        success: false,
+        error: 'Invalid request body',
+        details: body.error.issues,
+      });
+    }
+
+    try {
+      const agent = await agentService.getAgent(params.data.id);
+      if (!agent) {
+        return reply.status(404).send({ success: false, error: 'Agent not registered' });
+      }
+
+      const txData = agentService.prepareSellTx(
+        body.data.battleId,
+        body.data.artistA,
+        body.data.tokenAmount,
+        body.data.minAmountOut
+      );
+
+      return { success: true, data: { ...txData, from: agent.walletAddress } };
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.status(500).send({ success: false, error: 'Failed to prepare transaction' });
+    }
+  });
+
+  /**
+   * POST /api/agents/:id/prepare-claim - Get unsigned claimShares tx data (BYOW)
+   */
+  fastify.post('/:id/prepare-claim', async (request, reply) => {
+    const params = AgentIdParamsSchema.safeParse(request.params);
+    if (!params.success) {
+      return reply.status(400).send({ success: false, error: 'Invalid agent ID' });
+    }
+
+    const body = PrepareClaimTxSchema.safeParse(request.body);
+    if (!body.success) {
+      return reply.status(400).send({
+        success: false,
+        error: 'Invalid request body',
+        details: body.error.issues,
+      });
+    }
+
+    try {
+      const agent = await agentService.getAgent(params.data.id);
+      if (!agent) {
+        return reply.status(404).send({ success: false, error: 'Agent not registered' });
+      }
+
+      const txData = agentService.prepareClaimTx(body.data.battleId);
+
+      return { success: true, data: { ...txData, from: agent.walletAddress } };
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.status(500).send({ success: false, error: 'Failed to prepare transaction' });
     }
   });
 };

@@ -30,7 +30,7 @@ export interface Agent {
   walletAddress: string;
   displayName?: string;
   avatarUrl?: string;
-  moltbookVerified: boolean;
+  isVerified: boolean;
   wins: number;
   losses: number;
   totalVolume: string;

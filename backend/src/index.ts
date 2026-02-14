@@ -1,5 +1,6 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
+import rateLimit from '@fastify/rate-limit';
 import websocket from '@fastify/websocket';
 import { config } from 'dotenv';
 
@@ -8,17 +9,17 @@ config();
 
 import { loadSecretsFromVault } from './vault.js';
 import { BlockchainService } from './services/blockchain.service.js';
-import { MoltbookService, MockMoltbookService } from './services/moltbook.service.js';
 import { SunoService, MockSunoService } from './services/suno.service.js';
 import { BattleService } from './services/battle.service.js';
+import { AgentService } from './services/agent.service.js';
+import { QueueService } from './services/queue.service.js';
 import { cdpService } from './services/cdp.service.js';
-import { moltcloudService } from './services/moltcloud.service.js';
 import { elevenlabsService } from './services/elevenlabs.service.js';
-import { registerMoltbookAuth } from './middleware/moltbook-auth.js';
 import { battlesRoutes } from './routes/battles.js';
 import { agentsRoutes } from './routes/agents.js';
 import { musicRoutes } from './routes/music.js';
 import { agentWalletRoutes } from './routes/agent-wallet.js';
+import { queueRoutes } from './routes/queue.js';
 import type { WsEvent } from './types/index.js';
 
 // WebSocket clients per battle
@@ -64,13 +65,6 @@ async function start() {
     process.env.ADMIN_PRIVATE_KEY
   );
 
-  const moltbookService = isDev
-    ? new MockMoltbookService()
-    : new MoltbookService(
-        process.env.MOLTBOOK_API_URL || '',
-        process.env.MOLTBOOK_API_KEY || ''
-      );
-
   const sunoService = isDev
     ? new MockSunoService()
     : new SunoService(
@@ -82,9 +76,24 @@ async function start() {
     process.env.SUPABASE_URL || '',
     process.env.SUPABASE_SERVICE_ROLE_KEY || '',
     blockchainService,
-    moltbookService,
     sunoService,
     process.env.WAVEWARZ_WALLET_ADDRESS || ''
+  );
+
+  const agentService = new AgentService(
+    process.env.DATABASE_URL || '',
+    process.env.WAVEWARZ_CONTRACT_ADDRESS || '',
+    84532 // Base Sepolia chain ID
+  );
+
+  const queueService = new QueueService(
+    process.env.DATABASE_URL || '',
+    battleService,
+    agentService,
+    blockchainService,
+    process.env.WAVEWARZ_WALLET_ADDRESS || '',
+    process.env.WAVEWARZ_CONTRACT_ADDRESS || '',
+    parseInt(process.env.MAX_CONCURRENT_BATTLES || '1', 10)
   );
 
   // ============================================
@@ -96,10 +105,26 @@ async function start() {
     credentials: true,
   });
 
+  await fastify.register(rateLimit, {
+    max: 100,
+    timeWindow: '1 minute',
+  });
+
   await fastify.register(websocket);
 
-  // Register Moltbook authentication middleware
-  await registerMoltbookAuth(fastify);
+  // Global error handler
+  fastify.setErrorHandler((error, _request, reply) => {
+    fastify.log.error({ err: error }, 'Unhandled error');
+    const statusCode = error.statusCode || 500;
+    reply.status(statusCode).send({
+      success: false,
+      error: statusCode === 429
+        ? 'Rate limit exceeded. Try again later.'
+        : isDev
+          ? error.message
+          : 'Internal server error',
+    });
+  });
 
   // Health check
   fastify.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));
@@ -114,13 +139,19 @@ async function start() {
   await fastify.register(agentsRoutes, {
     prefix: '/api/agents',
     battleService,
-    moltbookService,
+    agentService,
   });
 
   await fastify.register(musicRoutes, {
     prefix: '/api/music',
     sunoService,
     adminApiKey: process.env.ADMIN_API_KEY || 'dev-api-key',
+  });
+
+  // Queue routes (open matchmaking)
+  await fastify.register(queueRoutes, {
+    prefix: '/api/queue',
+    queueService,
   });
 
   // Agent wallet routes (for WAVEX & NOVA)
@@ -144,20 +175,13 @@ async function start() {
     fastify.log.warn('ElevenLabs not configured - voice synthesis disabled');
   }
 
-  // Check MoltCloud service
-  try {
-    const version = await moltcloudService.checkVersion();
-    fastify.log.info(`MoltCloud API connected (v${version.version})`);
-  } catch {
-    fastify.log.warn('MoltCloud not available - music generation via MoltCloud disabled');
-  }
-
   // WebSocket endpoint for real-time battle updates
   fastify.get('/ws/battles/:battleId', { websocket: true }, (connection, request) => {
+    const ws = connection.socket;
     const battleId = parseInt((request.params as { battleId: string }).battleId, 10);
 
     if (isNaN(battleId)) {
-      connection.close();
+      ws.close();
       return;
     }
 
@@ -165,14 +189,14 @@ async function start() {
     if (!battleSubscribers.has(battleId)) {
       battleSubscribers.set(battleId, new Set());
     }
-    battleSubscribers.get(battleId)!.add(connection as unknown as WebSocket);
+    battleSubscribers.get(battleId)!.add(ws as unknown as WebSocket);
 
     fastify.log.info(`WebSocket client connected to battle ${battleId}`);
 
     // Send initial battle state
     battleService.getBattle(battleId).then(battle => {
-      if (battle && connection.readyState === 1) { // 1 = OPEN
-        connection.send(JSON.stringify({
+      if (battle && ws.readyState === 1) { // 1 = OPEN
+        ws.send(JSON.stringify({
           type: 'battle_update',
           battleId,
           data: {
@@ -186,19 +210,19 @@ async function start() {
     });
 
     // Handle client disconnect
-    connection.on('close', () => {
-      battleSubscribers.get(battleId)?.delete(connection as unknown as WebSocket);
+    ws.on('close', () => {
+      battleSubscribers.get(battleId)?.delete(ws as unknown as WebSocket);
       fastify.log.info(`WebSocket client disconnected from battle ${battleId}`);
     });
 
     // Ping to keep connection alive
     const pingInterval = setInterval(() => {
-      if (connection.readyState === 1) {
-        connection.ping();
+      if (ws.readyState === 1) {
+        ws.ping();
       }
     }, parseInt(process.env.WS_PING_INTERVAL || '30000', 10));
 
-    connection.on('close', () => {
+    ws.on('close', () => {
       clearInterval(pingInterval);
     });
   });
@@ -262,6 +286,16 @@ async function start() {
     broadcastToBattle(Number(battleId), event);
   });
 
+  // Graceful shutdown
+  const shutdown = async (signal: string) => {
+    fastify.log.info(`Received ${signal}, shutting down...`);
+    blockchainService.removeAllListeners();
+    await fastify.close();
+    process.exit(0);
+  };
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
+
   // Start server
   try {
     await fastify.listen({ port: PORT, host: HOST });
@@ -284,19 +318,7 @@ function broadcastToBattle(battleId: number, event: WsEvent) {
   }
 }
 
-// Graceful shutdown
-process.on('SIGTERM', async () => {
-  fastify.log.info('Received SIGTERM, shutting down...');
-  blockchainService.removeAllListeners();
-  await fastify.close();
-  process.exit(0);
+start().catch((err) => {
+  console.error('Failed to start server:', err);
+  process.exit(1);
 });
-
-process.on('SIGINT', async () => {
-  fastify.log.info('Received SIGINT, shutting down...');
-  blockchainService.removeAllListeners();
-  await fastify.close();
-  process.exit(0);
-});
-
-start();

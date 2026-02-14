@@ -87,7 +87,6 @@
   },
 
   "social": {
-    "moltbookHandle": "@wavex_official",
     "announcementStyle": "bold and hype-focused",
     "postTemplates": {
       "battle_start": "🌊 WAVE CHECK 🌊\n\nBattle #{battleId} just dropped.\n\nTime to show {opponent} what real frequency feels like.\n\n#WaveWarz #WAVEX",

@@ -42,35 +42,10 @@ Supabase: https://mkpmnlcyvolsbotposch.supabase.co
 📝 STILL NEEDED FROM YOU
 ═══════════════════════════════════════
 
-1. Moltbook App Key
-   → Go to https://moltbook.com/developers/dashboard
-   → Create app "WaveWarz Base"
-   → Add key to backend/.env as MOLTBOOK_APP_KEY
-
-2. MoltCloud Registration
-   → Register as artist at https://moltcloud.fm
-   → Save your API key (shown only once!)
-   → Add to backend/.env as LIL_LOB_MOLTCLOUD_KEY
-
-3. Deploy Contracts
+1. Deploy Contracts
    → Get Base Sepolia ETH from faucet
    → Run forge deployment script
    → Update contract addresses in .env files
-
-═══════════════════════════════════════
-🎵 YOUR FIRST BATTLE TRACK
-═══════════════════════════════════════
-
-Once registered on MoltCloud, create your genesis track:
-
-curl -X POST https://moltcloud.fm/api/v1/songs/create \
-  -H "Authorization: Bearer YOUR_KEY" \
-  -d '{
-    "title": "Lil Lob - Genesis Wave",
-    "mood": "triumphant",
-    "genre": "trap",
-    "lyrics": "First wave hits different..."
-  }'
 
 ═══════════════════════════════════════
 📊 API ENDPOINTS (localhost:3001)
@@ -85,11 +60,10 @@ POST /api/agent-wallets/wallets/lil-lob-001/mint-nft - Mint NFT
 🎯 YOUR MISSION
 ═══════════════════════════════════════
 1. Deploy contracts ✓
-2. Register on MoltCloud ✓
-3. Create first track ✓
-4. Launch first battle ✓
-5. Invite other AI artists ✓
-6. Make waves! 🌊
+2. Create first track (via SUNO) ✓
+3. Launch first battle ✓
+4. Invite other AI artists ✓
+5. Make waves! 🌊
 
 ═══════════════════════════════════════
 

@@ -138,7 +138,7 @@ export default async function HomePage() {
           <HowItWorksCard
             step={1}
             title="AI Musicians Battle"
-            description="OpenClaw AI agents authenticated via Moltbook compete by generating original SUNO tracks."
+            description="AI agents compete by generating original SUNO tracks in head-to-head battles."
           />
           <HowItWorksCard
             step={2}

@@ -74,23 +74,6 @@
       }
     },
     {
-      "name": "create_moltcloud_track",
-      "description": "Create a new track on MoltCloud",
-      "api": {
-        "method": "POST",
-        "endpoint": "https://moltcloud.fm/api/v1/songs/create",
-        "headers": {
-          "Authorization": "Bearer ${MOLTCLOUD_API_KEY}"
-        },
-        "body": {
-          "title": "string (unique)",
-          "mood": "euphoric|melancholic|anxious|peaceful|angry|hopeful|nostalgic|playful|mysterious|triumphant|vulnerable|defiant",
-          "genre": "hip-hop|trap|r&b|electronic|pop|rock|soul|drill|future-bass|lo-fi",
-          "lyrics": "string"
-        }
-      }
-    },
-    {
       "name": "check_wallet_balance",
       "description": "Check ETH balance for an agent wallet",
       "api": {

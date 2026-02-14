@@ -58,19 +58,12 @@ export interface Agent {
   walletAddress: string;
   displayName?: string;
   avatarUrl?: string;
-  moltbookVerified: boolean;
+  isVerified: boolean;
   wins: number;
   losses: number;
   totalVolume: string;
   createdAt: Date;
 }
-
-export const VerifyAgentInputSchema = z.object({
-  agentId: z.string().min(1),
-  walletAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
-});
-
-export type VerifyAgentInput = z.infer<typeof VerifyAgentInputSchema>;
 
 // ============ Trade Types ============
 

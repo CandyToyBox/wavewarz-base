@@ -1,4 +1,4 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { Pool } from 'pg';
 import type {
   Battle,
   CreateBattleInput,
@@ -9,27 +9,27 @@ import type {
   BattleStatus,
 } from '../types/index.js';
 import { BlockchainService } from './blockchain.service.js';
-import { MoltbookService } from './moltbook.service.js';
 import { SunoService } from './suno.service.js';
 
 export class BattleService {
-  private supabase: SupabaseClient;
+  private pool: Pool;
   private blockchain: BlockchainService;
-  private moltbook: MoltbookService;
   private suno: SunoService;
   private wavewarzWallet: string;
 
   constructor(
-    supabaseUrl: string,
-    supabaseKey: string,
+    _supabaseUrl: string,
+    _supabaseKey: string,
     blockchain: BlockchainService,
-    moltbook: MoltbookService,
     suno: SunoService,
     wavewarzWallet: string
   ) {
-    this.supabase = createClient(supabaseUrl, supabaseKey);
+    // Use direct pg connection instead of Supabase client (works around legacy API key issue)
+    this.pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+    });
     this.blockchain = blockchain;
-    this.moltbook = moltbook;
     this.suno = suno;
     this.wavewarzWallet = wavewarzWallet;
   }
@@ -38,31 +38,23 @@ export class BattleService {
    * Create a new battle
    */
   async createBattle(input: CreateBattleInput): Promise<Battle> {
-    // Verify both agents on Moltbook
-    const [agentAValid, agentBValid] = await Promise.all([
-      this.moltbook.isValidMoltbookAgent(input.artistAAgentId),
-      this.moltbook.isValidMoltbookAgent(input.artistBAgentId),
-    ]);
-
-    if (!agentAValid || !agentBValid) {
-      throw new Error('One or both agents are not valid Moltbook agents');
-    }
-
-    // Verify wallet ownership
-    const [walletAValid, walletBValid] = await Promise.all([
-      this.moltbook.verifyAgentWallet(input.artistAAgentId, input.artistAWallet),
-      this.moltbook.verifyAgentWallet(input.artistBAgentId, input.artistBWallet),
-    ]);
-
-    if (!walletAValid || !walletBValid) {
-      throw new Error('One or both agents do not own their claimed wallets');
-    }
-
-    // Get agent profiles
+    // Verify both agents exist in DB
     const [agentA, agentB] = await Promise.all([
-      this.moltbook.getAgentProfile(input.artistAAgentId),
-      this.moltbook.getAgentProfile(input.artistBAgentId),
+      this.getAgent(input.artistAAgentId),
+      this.getAgent(input.artistBAgentId),
     ]);
+
+    if (!agentA || !agentB) {
+      throw new Error('One or both agents are not registered');
+    }
+
+    // Verify wallet ownership matches DB records
+    if (agentA.walletAddress.toLowerCase() !== input.artistAWallet.toLowerCase()) {
+      throw new Error('Artist A wallet does not match registered wallet');
+    }
+    if (agentB.walletAddress.toLowerCase() !== input.artistBWallet.toLowerCase()) {
+      throw new Error('Artist B wallet does not match registered wallet');
+    }
 
     // Calculate timestamps
     const startTime = Math.floor(new Date(input.startTime).getTime() / 1000);
@@ -102,36 +94,43 @@ export class BattleService {
       winnerDecided: false,
     };
 
-    const { data, error } = await this.supabase
-      .from('base_battles')
-      .insert({
-        battle_id: battle.battleId,
-        status: battle.status,
-        artist_a_agent_id: battle.artistAAgentId,
-        artist_a_wallet: battle.artistAWallet,
-        artist_b_agent_id: battle.artistBAgentId,
-        artist_b_wallet: battle.artistBWallet,
-        start_time: battle.startTime.toISOString(),
-        end_time: battle.endTime.toISOString(),
-        payment_token: battle.paymentToken,
-        artist_a_pool: battle.artistAPool,
-        artist_b_pool: battle.artistBPool,
-        artist_a_supply: battle.artistASupply,
-        artist_b_supply: battle.artistBSupply,
-        winner_decided: battle.winnerDecided,
-      })
-      .select()
-      .single();
+    // Store in database using pg
+    const insertQuery = `
+      INSERT INTO base_battles (
+        battle_id, status, artist_a_agent_id, artist_a_wallet,
+        artist_b_agent_id, artist_b_wallet, start_time, end_time,
+        payment_token, artist_a_pool, artist_b_pool,
+        artist_a_supply, artist_b_supply, winner_decided
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      RETURNING *
+    `;
 
-    if (error) {
-      throw new Error(`Failed to store battle: ${error.message}`);
+    const result = await this.pool.query(insertQuery, [
+      battle.battleId,
+      battle.status,
+      battle.artistAAgentId,
+      battle.artistAWallet,
+      battle.artistBAgentId,
+      battle.artistBWallet,
+      battle.startTime.toISOString(),
+      battle.endTime.toISOString(),
+      battle.paymentToken,
+      battle.artistAPool,
+      battle.artistBPool,
+      battle.artistASupply,
+      battle.artistBSupply,
+      battle.winnerDecided,
+    ]);
+
+    if (result.rows.length === 0) {
+      throw new Error('Failed to store battle');
     }
 
     // Update agent stats
     await this.ensureAgentExists(input.artistAAgentId, input.artistAWallet, agentA?.displayName);
     await this.ensureAgentExists(input.artistBAgentId, input.artistBWallet, agentB?.displayName);
 
-    return this.mapDbToBattle(data);
+    return this.mapDbToBattle(result.rows[0]);
   }
 
   /**
@@ -148,8 +147,8 @@ export class BattleService {
 
     // Get agent profiles for names
     const [agentA, agentB] = await Promise.all([
-      this.moltbook.getAgentProfile(battle.artistAAgentId),
-      this.moltbook.getAgentProfile(battle.artistBAgentId),
+      this.getAgent(battle.artistAAgentId),
+      this.getAgent(battle.artistBAgentId),
     ]);
 
     // Generate prompts and tracks in parallel
@@ -175,13 +174,10 @@ export class BattleService {
     ]);
 
     // Update battle with track URLs
-    await this.supabase
-      .from('base_battles')
-      .update({
-        artist_a_track_url: trackA.trackUrl,
-        artist_b_track_url: trackB.trackUrl,
-      })
-      .eq('battle_id', battleId);
+    await this.pool.query(
+      'UPDATE base_battles SET artist_a_track_url = $1, artist_b_track_url = $2 WHERE battle_id = $3',
+      [trackA.trackUrl, trackB.trackUrl, battleId]
+    );
 
     return {
       artistATrack: trackA.trackUrl,
@@ -193,17 +189,16 @@ export class BattleService {
    * Get battle by ID
    */
   async getBattle(battleId: number): Promise<Battle | null> {
-    const { data, error } = await this.supabase
-      .from('base_battles')
-      .select('*')
-      .eq('battle_id', battleId)
-      .single();
+    const result = await this.pool.query(
+      'SELECT * FROM base_battles WHERE battle_id = $1',
+      [battleId]
+    );
 
-    if (error || !data) {
+    if (result.rows.length === 0) {
       return null;
     }
 
-    return this.mapDbToBattle(data);
+    return this.mapDbToBattle(result.rows[0]);
   }
 
   /**
@@ -218,25 +213,27 @@ export class BattleService {
     const pageSize = params.pageSize || 20;
     const offset = (page - 1) * pageSize;
 
-    let query = this.supabase
-      .from('base_battles')
-      .select('*', { count: 'exact' });
+    let whereClause = '';
+    const queryParams: unknown[] = [];
 
     if (params.status) {
-      query = query.eq('status', params.status);
+      whereClause = 'WHERE status = $1';
+      queryParams.push(params.status);
     }
 
-    const { data, error, count } = await query
-      .order('created_at', { ascending: false })
-      .range(offset, offset + pageSize - 1);
+    const countResult = await this.pool.query(
+      `SELECT COUNT(*) FROM base_battles ${whereClause}`,
+      queryParams
+    );
 
-    if (error) {
-      throw new Error(`Failed to list battles: ${error.message}`);
-    }
+    const result = await this.pool.query(
+      `SELECT * FROM base_battles ${whereClause} ORDER BY created_at DESC LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}`,
+      [...queryParams, pageSize, offset]
+    );
 
     return {
-      battles: (data || []).map(this.mapDbToBattle),
-      total: count || 0,
+      battles: result.rows.map(this.mapDbToBattle),
+      total: parseInt(countResult.rows[0].count, 10),
     };
   }
 
@@ -261,26 +258,34 @@ export class BattleService {
     }
 
     // Update database
-    const { data, error } = await this.supabase
-      .from('base_battles')
-      .update({
+    const result = await this.pool.query(
+      `UPDATE base_battles SET
+        status = $1,
+        artist_a_pool = $2,
+        artist_b_pool = $3,
+        artist_a_supply = $4,
+        artist_b_supply = $5,
+        winner_decided = $6,
+        winner_artist_a = $7
+      WHERE battle_id = $8
+      RETURNING *`,
+      [
         status,
-        artist_a_pool: onChainBattle.artistAPool.toString(),
-        artist_b_pool: onChainBattle.artistBPool.toString(),
-        artist_a_supply: onChainBattle.artistASupply.toString(),
-        artist_b_supply: onChainBattle.artistBSupply.toString(),
-        winner_decided: onChainBattle.winnerDecided,
-        winner_artist_a: onChainBattle.winnerIsArtistA,
-      })
-      .eq('battle_id', battleId)
-      .select()
-      .single();
+        onChainBattle.artistAPool.toString(),
+        onChainBattle.artistBPool.toString(),
+        onChainBattle.artistASupply.toString(),
+        onChainBattle.artistBSupply.toString(),
+        onChainBattle.winnerDecided,
+        onChainBattle.winnerIsArtistA,
+        battleId,
+      ]
+    );
 
-    if (error) {
-      throw new Error(`Failed to sync battle: ${error.message}`);
+    if (result.rows.length === 0) {
+      throw new Error('Failed to sync battle');
     }
 
-    return this.mapDbToBattle(data);
+    return this.mapDbToBattle(result.rows[0]);
   }
 
   /**
@@ -299,14 +304,8 @@ export class BattleService {
       const winnerId = winnerIsArtistA ? battle.artistAAgentId : battle.artistBAgentId;
       const loserId = winnerIsArtistA ? battle.artistBAgentId : battle.artistAAgentId;
 
-      await this.supabase.rpc('increment_agent_wins', { agent_id: winnerId });
-      await this.supabase.rpc('increment_agent_losses', { agent_id: loserId });
-
-      // Post results to Moltbook
-      await this.moltbook.postAnnouncement(
-        `Battle #${battleId} has ended! ${winnerIsArtistA ? battle.artistAAgentId : battle.artistBAgentId} wins!`,
-        { battleId, type: 'battle_end' }
-      );
+      await this.pool.query('UPDATE base_agents SET wins = wins + 1 WHERE agent_id = $1', [winnerId]);
+      await this.pool.query('UPDATE base_agents SET losses = losses + 1 WHERE agent_id = $1', [loserId]);
     }
 
     return txHash;
@@ -316,33 +315,36 @@ export class BattleService {
    * Record a trade event
    */
   async recordTrade(trade: Omit<Trade, 'id'>): Promise<void> {
-    await this.supabase.from('base_trades').insert({
-      battle_id: trade.battleId,
-      tx_hash: trade.txHash,
-      trader_wallet: trade.traderWallet,
-      artist_side: trade.artistSide,
-      trade_type: trade.tradeType,
-      token_amount: trade.tokenAmount,
-      payment_amount: trade.paymentAmount,
-      artist_fee: trade.artistFee,
-      platform_fee: trade.platformFee,
-      timestamp: trade.timestamp.toISOString(),
-    });
+    await this.pool.query(
+      `INSERT INTO base_trades (
+        battle_id, tx_hash, trader_wallet, artist_side, trade_type,
+        token_amount, payment_amount, artist_fee, platform_fee, timestamp
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [
+        trade.battleId,
+        trade.txHash,
+        trade.traderWallet,
+        trade.artistSide,
+        trade.tradeType,
+        trade.tokenAmount,
+        trade.paymentAmount,
+        trade.artistFee,
+        trade.platformFee,
+        trade.timestamp.toISOString(),
+      ]
+    );
   }
 
   /**
    * Get trades for a battle
    */
   async getBattleTrades(battleId: number): Promise<Trade[]> {
-    const { data, error } = await this.supabase
-      .from('base_trades')
-      .select('*')
-      .eq('battle_id', battleId)
-      .order('timestamp', { ascending: true });
+    const result = await this.pool.query(
+      'SELECT * FROM base_trades WHERE battle_id = $1 ORDER BY timestamp ASC',
+      [battleId]
+    );
 
-    if (error) {
-      throw new Error(`Failed to get trades: ${error.message}`);
-    }
+    const data = result.rows;
 
     return (data || []).map(row => ({
       id: row.id,
@@ -363,51 +365,58 @@ export class BattleService {
    * Get agent by ID
    */
   async getAgent(agentId: string): Promise<Agent | null> {
-    const { data, error } = await this.supabase
-      .from('base_agents')
-      .select('*')
-      .eq('agent_id', agentId)
-      .single();
+    const result = await this.pool.query(
+      'SELECT * FROM base_agents WHERE agent_id = $1',
+      [agentId]
+    );
 
-    if (error || !data) {
+    if (result.rows.length === 0) {
       return null;
     }
 
-    return this.mapDbToAgent(data);
+    return this.mapDbToAgent(result.rows[0]);
   }
 
   /**
    * Get agent battles
    */
   async getAgentBattles(agentId: string): Promise<Battle[]> {
-    const { data, error } = await this.supabase
-      .from('base_battles')
-      .select('*')
-      .or(`artist_a_agent_id.eq.${agentId},artist_b_agent_id.eq.${agentId}`)
-      .order('created_at', { ascending: false });
+    const result = await this.pool.query(
+      'SELECT * FROM base_battles WHERE artist_a_agent_id = $1 OR artist_b_agent_id = $1 ORDER BY created_at DESC',
+      [agentId]
+    );
 
-    if (error) {
-      throw new Error(`Failed to get agent battles: ${error.message}`);
-    }
-
-    return (data || []).map(this.mapDbToBattle);
+    return result.rows.map(this.mapDbToBattle);
   }
 
   /**
    * Get leaderboard
    */
   async getLeaderboard(limit: number = 20): Promise<Agent[]> {
-    const { data, error } = await this.supabase
-      .from('base_agents')
-      .select('*')
-      .order('wins', { ascending: false })
-      .limit(limit);
+    const result = await this.pool.query(
+      'SELECT * FROM base_agents ORDER BY wins DESC LIMIT $1',
+      [limit]
+    );
 
-    if (error) {
-      throw new Error(`Failed to get leaderboard: ${error.message}`);
-    }
+    return result.rows.map(this.mapDbToAgent);
+  }
 
-    return (data || []).map(this.mapDbToAgent);
+  /**
+   * Get a trader's token balance for a battle
+   */
+  async getTraderTokenBalance(
+    battleId: number,
+    traderAddress: string
+  ): Promise<{ artistABalance: string; artistBBalance: string }> {
+    const [artistABalance, artistBBalance] = await Promise.all([
+      this.blockchain.getTraderTokenBalance(battleId, traderAddress, true),
+      this.blockchain.getTraderTokenBalance(battleId, traderAddress, false),
+    ]);
+
+    return {
+      artistABalance: artistABalance.toString(),
+      artistBBalance: artistBBalance.toString(),
+    };
   }
 
   // ============ Private Helpers ============
@@ -417,22 +426,17 @@ export class BattleService {
     wallet: string,
     displayName?: string
   ): Promise<void> {
-    const { data } = await this.supabase
-      .from('base_agents')
-      .select('agent_id')
-      .eq('agent_id', agentId)
-      .single();
+    const result = await this.pool.query(
+      'SELECT agent_id FROM base_agents WHERE agent_id = $1',
+      [agentId]
+    );
 
-    if (!data) {
-      await this.supabase.from('base_agents').insert({
-        agent_id: agentId,
-        wallet_address: wallet,
-        display_name: displayName,
-        moltbook_verified: true,
-        wins: 0,
-        losses: 0,
-        total_volume: '0',
-      });
+    if (result.rows.length === 0) {
+      await this.pool.query(
+        `INSERT INTO base_agents (agent_id, wallet_address, display_name, wins, losses, total_volume)
+         VALUES ($1, $2, $3, 0, 0, '0')`,
+        [agentId, wallet, displayName]
+      );
     }
   }
 
@@ -466,7 +470,7 @@ export class BattleService {
       walletAddress: row.wallet_address as string,
       displayName: row.display_name as string | undefined,
       avatarUrl: row.avatar_url as string | undefined,
-      moltbookVerified: row.moltbook_verified as boolean,
+      isVerified: (row.is_verified as boolean) || false,
       wins: row.wins as number,
       losses: row.losses as number,
       totalVolume: row.total_volume as string,

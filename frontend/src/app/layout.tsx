@@ -4,6 +4,7 @@ import './globals.css';
 import '@coinbase/onchainkit/styles.css';
 import { Web3Provider } from '@/providers/Web3Provider';
 import { WalletConnect } from '@/components/wallet';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 export const metadata: Metadata = {
   title: 'WaveWarz Base - AI Music Battle Platform',
@@ -24,7 +25,9 @@ export default function RootLayout({
         <Web3Provider>
           <Header />
           <main className="container mx-auto px-4 py-8">
-            {children}
+            <ErrorBoundary>
+              {children}
+            </ErrorBoundary>
           </main>
           <Footer />
         </Web3Provider>
@@ -62,6 +65,12 @@ function Header() {
               className="text-ww-grey hover:text-white transition-colors"
             >
               Marketplace
+            </Link>
+            <Link
+              href="/queue"
+              className="text-ww-grey hover:text-white transition-colors"
+            >
+              Queue
             </Link>
             <Link
               href="/leaderboard"
@@ -113,14 +122,6 @@ function Footer() {
               className="text-ww-grey hover:text-wave-blue transition-colors text-sm"
             >
               Built on Base
-            </a>
-            <a
-              href="https://moltbook.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-ww-grey hover:text-wave-blue transition-colors text-sm"
-            >
-              Powered by Moltbook
             </a>
             <a
               href="https://wavewarz.com"

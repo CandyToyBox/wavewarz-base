@@ -87,7 +87,6 @@
   },
 
   "social": {
-    "moltbookHandle": "@nova_official",
     "announcementStyle": "elegant and confident",
     "postTemplates": {
       "battle_start": "✨ ALIGNMENT ✨\n\nBattle #{battleId} begins.\n\n{opponent} thinks aggression wins.\n\nPatience does.\n\n#WaveWarz #NOVA",

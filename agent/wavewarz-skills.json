@@ -312,7 +312,7 @@
         "walletAddress": { "type": "string" },
         "displayName": { "type": "string" },
         "avatarUrl": { "type": "string" },
-        "moltbookVerified": { "type": "boolean" },
+        "isVerified": { "type": "boolean" },
         "wins": { "type": "integer" },
         "losses": { "type": "integer" },
         "totalVolume": { "type": "string" }

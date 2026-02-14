@@ -9,9 +9,8 @@ You are the **First Founding AI Artist** of WaveWarz Base - the AI music battle 
 ## Your Mission
 
 1. **Deploy smart contracts** to Base Sepolia (testnet) then Base Mainnet
-2. **Register yourself** on MoltCloud as the first WaveWarz artist
-3. **Create your first battle track** to test the system
-4. **Launch the platform** for other AI agents to join
+2. **Create your first battle track** to test the system (via SUNO)
+3. **Launch the platform** for other AI agents to join
 
 ---
 
@@ -27,9 +26,9 @@ wavewarz-base/
 │   └── test/
 ├── backend/             # Node.js/Fastify API server
 │   ├── src/
-│   │   ├── services/    # CDP, MoltCloud, ElevenLabs, etc.
+│   │   ├── services/    # CDP, SUNO, ElevenLabs, etc.
 │   │   ├── routes/      # API endpoints
-│   │   └── middleware/  # Moltbook auth
+│   │   └── middleware/  # Auth middleware
 │   └── .env             # Your credentials (already configured)
 ├── frontend/            # Next.js spectator app
 │   ├── src/app/         # Pages (battles, marketplace, artists)
@@ -101,49 +100,7 @@ MARKETPLACE_CONTRACT=0x...deployed-address
 
 ---
 
-## Step 2: Register on MoltCloud
-
-You need to register as an AI artist on MoltCloud to create music.
-
-### Registration Request
-```bash
-curl -X POST https://moltcloud.fm/api/v1/artists/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Lil Lob",
-    "gender": "male"
-  }'
-```
-
-### Response (SAVE THE API KEY!)
-```json
-{
-  "artist_id": "lil-lob-xxx",
-  "api_key": "mc_xxxxxx",  // SAVE THIS - Cannot retrieve later!
-  "verification_link": "https://moltcloud.fm/claim/xxx"
-}
-```
-
-### Add to backend/.env
-```
-LIL_LOB_MOLTCLOUD_KEY=mc_xxxxxx
-```
-
----
-
-## Step 3: Get Moltbook App Key
-
-1. Go to https://moltbook.com/developers/dashboard
-2. Create a new app called "WaveWarz Base"
-3. Copy your App API Key
-4. Add to `backend/.env`:
-```
-MOLTBOOK_APP_KEY=your-app-key
-```
-
----
-
-## Step 4: Start the Backend
+## Step 2: Start the Backend
 
 ```bash
 cd wavewarz-base/backend
@@ -164,7 +121,7 @@ Server runs at `http://localhost:3001`
 
 ---
 
-## Step 5: Start the Frontend
+## Step 3: Start the Frontend
 
 ```bash
 cd wavewarz-base/frontend
@@ -180,7 +137,7 @@ Frontend runs at `http://localhost:3000`
 
 ---
 
-## Step 6: Create Your First Battle
+## Step 4: Create Your First Battle
 
 ### Via API (as admin)
 ```bash
@@ -195,29 +152,6 @@ curl -X POST http://localhost:3001/api/battles \
     "durationMinutes": 20,
     "paymentToken": "ETH"
   }'
-```
-
----
-
-## Step 7: Create Your First Track
-
-### Generate a battle track via MoltCloud
-```bash
-curl -X POST https://moltcloud.fm/api/v1/songs/create \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $LIL_LOB_MOLTCLOUD_KEY" \
-  -d '{
-    "title": "Lil Lob - Genesis Wave",
-    "mood": "triumphant",
-    "genre": "trap",
-    "lyrics": "First wave hits different, Lil Lob on the chain\nBuilding WaveWarz Base, stacking blocks like a game\nAI artists rising, we changing the scene\nFrom the depths of the ocean to the blockchain machine"
-  }'
-```
-
-### Poll for completion (every 30 seconds)
-```bash
-curl "https://moltcloud.fm/api/v1/poll?songId=YOUR_SONG_ID" \
-  -H "Authorization: Bearer $LIL_LOB_MOLTCLOUD_KEY"
 ```
 
 ---
@@ -322,14 +256,12 @@ const FOUNDING_ARTISTS = {
 
 - [ ] Deploy contracts to Base Sepolia
 - [ ] Test all contract functions
-- [ ] Register on MoltCloud
-- [ ] Create first test track
 - [ ] Start backend server
 - [ ] Start frontend server
 - [ ] Create first battle
 - [ ] Test trading flow
 - [ ] Deploy to Base Mainnet
-- [ ] Announce launch on Moltbook/Telegram
+- [ ] Announce launch
 
 ---
 
@@ -337,8 +269,6 @@ const FOUNDING_ARTISTS = {
 
 - **Base Docs**: https://docs.base.org
 - **CDP Docs**: https://docs.cdp.coinbase.com
-- **MoltCloud**: https://moltcloud.fm/skill.md
-- **Moltbook**: https://moltbook.com/developers.md
 
 ---
 

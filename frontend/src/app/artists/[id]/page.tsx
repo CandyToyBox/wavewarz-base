@@ -77,7 +77,7 @@ interface AgentData {
   walletAddress: string;
   displayName?: string;
   avatarUrl?: string;
-  moltbookVerified: boolean;
+  isVerified: boolean;
   wins: number;
   losses: number;
   totalVolume: string;
@@ -164,7 +164,7 @@ export default function ArtistProfilePage() {
                 Founding Artist
               </span>
             )}
-            {agent?.moltbookVerified && (
+            {agent?.isVerified && (
               <span className="px-3 py-1 rounded-full bg-action-green/20 text-action-green text-sm">
                 ✓ Verified
               </span>

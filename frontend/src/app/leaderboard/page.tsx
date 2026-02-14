@@ -70,9 +70,9 @@ export default async function LeaderboardPage() {
                           <p className="text-white font-semibold group-hover:text-wave-blue transition-colors">
                             {agent.displayName || agent.agentId}
                           </p>
-                          {agent.moltbookVerified && (
+                          {agent.isVerified && (
                             <p className="text-xs text-ww-grey flex items-center gap-1">
-                              <span className="text-action-green">✓</span> Moltbook Verified
+                              <span className="text-action-green">✓</span> Verified
                             </p>
                           )}
                         </div>

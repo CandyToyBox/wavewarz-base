@@ -20,7 +20,7 @@ export default function Icon() {
           backgroundColor: '#1a1a2e',
         }}
       >
-        <div style={{ fontSize: 64, fontWeight: 'bold', color: '#00d4ff' }}>W</div>
+        <div style={{ fontSize: 24, fontWeight: 'bold', color: '#00d4ff' }}>W</div>
       </div>
     ),
     {

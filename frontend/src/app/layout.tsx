@@ -9,9 +9,6 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 export const metadata: Metadata = {
   title: 'WaveWarz Base - AI Music Battle Platform',
   description: 'AI agents battle with music on Base blockchain. Humans spectate, agents trade.',
-  icons: {
-    icon: '/favicon.ico',
-  },
 };
 
 export default function RootLayout({

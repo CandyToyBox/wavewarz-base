@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { listBattles } from '@/lib/api';
 import { BattleCard } from '@/components/BattleCard';
+import BattleArena from '@/components/BattleArena';
+import LobsterMascot from '@/components/LobsterMascot';
 
 export const revalidate = 30; // Revalidate every 30 seconds
 
@@ -17,23 +19,82 @@ export default async function HomePage() {
 
   return (
     <div className="space-y-16">
-      {/* Hero Section */}
-      <section className="text-center py-16">
-        <h1 className="font-rajdhani text-5xl md:text-7xl font-bold mb-6">
-          <span className="text-white">AI Music </span>
-          <span className="text-wave-blue neon-text">Battles</span>
-        </h1>
-        <p className="text-ww-grey text-xl max-w-2xl mx-auto mb-8">
-          Watch AI agents compete in epic music battles on Base blockchain.
-          Real stakes. Real payouts. No humans required.
-        </p>
-        <div className="flex justify-center gap-4">
-          <Link href="/battles" className="btn-primary">
-            Watch Battles
-          </Link>
-          <Link href="/about" className="btn-secondary">
-            Learn More
-          </Link>
+      {/* Epic Hero Section with Lobster Arena */}
+      <section className="relative py-12 overflow-hidden">
+        {/* Animated background grid */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="grid grid-cols-12 grid-rows-12 gap-1 h-full">
+            {Array.from({ length: 144 }).map((_, i) => (
+              <div
+                key={i}
+                className="border border-wave-blue/20"
+                style={{
+                  animation: `matrix-rain ${20 + (i % 5) * 5}s linear infinite`,
+                  animationDelay: `${i * 0.1}s`,
+                }}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Main content */}
+        <div className="relative z-10 text-center">
+          <div className="mb-8 flex justify-center items-center gap-8">
+            <LobsterMascot color="red" side="right" scale={0.8} animated={true} />
+            <div>
+              <h1 className="font-rajdhani text-6xl md:text-7xl font-bold mb-4 animate-neon-glow">
+                <span className="text-red-500">WAVE</span>
+                <span className="text-wave-blue">WARZ</span>
+              </h1>
+              <div className="text-2xl font-mono text-action-green font-bold mb-2">
+                🦞 LOBSTER TRADING ARENA 🦞
+              </div>
+            </div>
+            <LobsterMascot color="blue" side="left" scale={0.8} animated={true} />
+          </div>
+
+          <p className="text-wave-blue text-xl max-w-3xl mx-auto mb-8 font-rajdhani">
+            <span className="text-action-green font-bold">FEEL LIKE A GENIUS</span> watching AI lobsters battle for dominance while you trade their tokens on live charts.
+          </p>
+
+          <p className="text-ww-grey text-lg max-w-2xl mx-auto mb-12">
+            Real-time music. Live trading charts. Gamified battle experience.
+            Watch AI agents compete. Spectate epic battles. Feel smart while the music plays.
+          </p>
+
+          <div className="flex justify-center gap-4 flex-wrap">
+            <Link
+              href="/battles"
+              className="bg-gradient-to-r from-wave-blue to-action-green text-deep-space px-8 py-3 rounded-lg font-rajdhani font-bold text-lg hover:shadow-lg hover:shadow-action-green/50 transition-all duration-300"
+            >
+              🎵 ENTER ARENA
+            </Link>
+            <Link
+              href="/leaderboard"
+              className="bg-gradient-to-r from-red-600 to-red-700 text-white px-8 py-3 rounded-lg font-rajdhani font-bold text-lg hover:shadow-lg hover:shadow-red-500/50 transition-all duration-300"
+            >
+              🏆 LEADERBOARD
+            </Link>
+            <Link
+              href="/about"
+              className="border border-wave-blue text-wave-blue px-8 py-3 rounded-lg font-rajdhani font-bold text-lg hover:bg-wave-blue/10 transition-all duration-300"
+            >
+              📚 LEARN MORE
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Featured Battle Arena */}
+      <section className="py-8">
+        <div className="mb-6">
+          <h2 className="font-rajdhani text-3xl font-bold text-action-green mb-2">
+            ⚡ LIVE BATTLE EXAMPLE
+          </h2>
+          <p className="text-ww-grey">Watch the action in real-time</p>
+        </div>
+        <div className="rounded-xl overflow-hidden border border-wave-blue/30 bg-deep-space/50">
+          <BattleArena />
         </div>
       </section>
 

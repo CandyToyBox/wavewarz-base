@@ -53,12 +53,14 @@ class CdpService {
   async initialize(): Promise<void> {
     if (this.initialized) return;
 
-    const apiKeyId = process.env.CDP_API_KEY_ID;
-    const apiKeySecret = process.env.CDP_API_KEY_SECRET;
-    const walletSecret = process.env.CDP_WALLET_SECRET;
+    // Support both CDP_ prefixed (standard) and COINBASE_ prefixed (OpenClaw) env vars
+    const apiKeyId = process.env.CDP_API_KEY_ID || process.env.COINBASE_API_KEY_ID;
+    const apiKeySecret = process.env.CDP_API_KEY_SECRET || process.env.COINBASE_API_SECRET;
+    const walletSecret = process.env.CDP_WALLET_SECRET || process.env.COINBASE_WALLET_SECRET;
 
     if (!apiKeyId || !apiKeySecret) {
       console.warn('⚠️  CDP credentials not configured. Using mock wallets for development.');
+      console.warn('   Expected: CDP_API_KEY_ID, CDP_API_KEY_SECRET or COINBASE_API_KEY_ID, COINBASE_API_SECRET');
       this.initialized = true;
       return;
     }
@@ -395,9 +397,36 @@ class CdpService {
   getClient(): CdpClient | null {
     return this.client;
   }
+
+  /**
+   * Check if an agent is managed by CDP
+   */
+  isAgentManaged(agentId: string): boolean {
+    const walletData = this.wallets.get(agentId);
+    return walletData && !walletData.mock;
+  }
+
+  /**
+   * Get wallet for an agent (for use by TradeExecutor)
+   * Returns an ethers.Wallet-compatible object
+   */
+  getAgentWallet(agentId: string): any {
+    const walletData = this.wallets.get(agentId);
+    if (!walletData) return null;
+
+    if (walletData.mock) {
+      return null; // Mock wallets can't be used for signing
+    }
+
+    // Return the CDP account which can be used to sign transactions
+    return walletData.account;
+  }
 }
 
 // Singleton instance
 export const cdpService = new CdpService();
+
+// Export class for type usage
+export { CdpService };
 
 export default cdpService;

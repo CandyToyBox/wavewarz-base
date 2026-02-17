@@ -161,30 +161,10 @@ export class QueueService {
   /**
    * Check if 2 agents are in queue and auto-create a battle
    */
-  private async checkAndCreateBattle(): Promise<void> {
-    // Check if we have a battle slot available
-    const activeBattles = await this.pool.query(
-      "SELECT COUNT(*) as count FROM base_battles WHERE status IN ('pending', 'active')"
-    );
-    const activeBattleCount = parseInt(activeBattles.rows[0].count, 10);
-    if (activeBattleCount >= this.maxConcurrentBattles) {
-      return; // No slots available
-    }
-
-    const queueResult = await this.pool.query(
-      'SELECT * FROM battle_queue ORDER BY joined_at ASC LIMIT 2'
-    );
-
-    if (queueResult.rows.length < 2) {
-      return; // Not enough agents
-    }
-
-    const agentA = queueResult.rows[0];
-    const agentB = queueResult.rows[1];
-
+  async createBattle(agentA: QueueEntry, agentB: QueueEntry): Promise<number> {
     // Calculate battle duration: song1 + song2 + 30s closing window
     const battleDuration =
-      agentA.track_duration_seconds + agentB.track_duration_seconds + 30;
+      agentA.trackDurationSeconds + agentB.trackDurationSeconds + 30;
 
     // Start time = now + 60s (pre-timer for preparation)
     const startTime = Math.floor(Date.now() / 1000) + 60;
@@ -204,8 +184,8 @@ export class QueueService {
         battleId: nextBattleId,
         battleDuration,
         startTime,
-        artistAWallet: agentA.wallet_address,
-        artistBWallet: agentB.wallet_address,
+        artistAWallet: agentA.walletAddress,
+        artistBWallet: agentB.walletAddress,
         wavewarzWallet: this.wavewarzWallet,
         paymentToken,
       });
@@ -226,12 +206,12 @@ export class QueueService {
         [
           nextBattleId,
           'pending',
-          agentA.agent_id,
-          agentA.wallet_address,
-          agentA.track_url,
-          agentB.agent_id,
-          agentB.wallet_address,
-          agentB.track_url,
+          agentA.agentId,
+          agentA.walletAddress,
+          agentA.trackUrl,
+          agentB.agentId,
+          agentB.walletAddress,
+          agentB.trackUrl,
           startDate.toISOString(),
           endDate.toISOString(),
           'ETH',
@@ -240,23 +220,49 @@ export class QueueService {
       );
 
       // Mark both agents as in active battle
-      await this.agentService.setActiveBattle(agentA.agent_id, nextBattleId);
-      await this.agentService.setActiveBattle(agentB.agent_id, nextBattleId);
+      await this.agentService.setActiveBattle(agentA.agentId, nextBattleId);
+      await this.agentService.setActiveBattle(agentB.agentId, nextBattleId);
 
       // Clear queue
       await this.pool.query('DELETE FROM battle_queue WHERE agent_id IN ($1, $2)', [
-        agentA.agent_id,
-        agentB.agent_id,
+        agentA.agentId,
+        agentB.agentId,
       ]);
 
       console.log(
-        `Battle ${nextBattleId} created: ${agentA.agent_id} vs ${agentB.agent_id}, ` +
+        `Battle ${nextBattleId} created: ${agentA.agentId} vs ${agentB.agentId}, ` +
         `duration ${battleDuration}s, starts at ${startDate.toISOString()}`
       );
+
+      return nextBattleId;
     } catch (error) {
-      console.error('Failed to auto-create battle from queue:', error);
+      console.error('Failed to create battle:', error);
       throw error;
     }
+  }
+
+  private async checkAndCreateBattle(): Promise<void> {
+    // Check if we have a battle slot available
+    const activeBattles = await this.pool.query(
+      "SELECT COUNT(*) as count FROM base_battles WHERE status IN ('pending', 'active')"
+    );
+    const activeBattleCount = parseInt(activeBattles.rows[0].count, 10);
+    if (activeBattleCount >= this.maxConcurrentBattles) {
+      return; // No slots available
+    }
+
+    const queueResult = await this.pool.query(
+      'SELECT * FROM battle_queue ORDER BY joined_at ASC LIMIT 2'
+    );
+
+    if (queueResult.rows.length < 2) {
+      return; // Not enough agents
+    }
+
+    const agentA = this.mapQueueRow(queueResult.rows[0]);
+    const agentB = this.mapQueueRow(queueResult.rows[1]);
+
+    await this.createBattle(agentA, agentB);
   }
 
   private mapQueueRow(row: Record<string, unknown>): QueueEntry {

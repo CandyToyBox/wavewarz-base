@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WaveWarz Base – GitHub Pages</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #0d1117;
+        --card: #161b22;
+        --text: #e6edf3;
+        --muted: #8b949e;
+        --accent: #58a6ff;
+      }
+      body {
+        margin: 0;
+        font-family: "Inter", system-ui, -apple-system, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.6;
+        padding: 32px 16px 56px;
+      }
+      .page {
+        max-width: 880px;
+        margin: 0 auto;
+      }
+      header h1 {
+        margin: 0 0 8px;
+        font-size: 28px;
+        letter-spacing: -0.02em;
+      }
+      header p {
+        margin: 0 0 16px;
+        color: var(--muted);
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid #30363d;
+        border-radius: 14px;
+        padding: 20px 22px;
+        margin: 18px 0;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16);
+      }
+      h2 {
+        margin: 0 0 10px;
+        font-size: 20px;
+      }
+      a {
+        color: var(--accent);
+      }
+      ul, ol {
+        margin: 0;
+        padding-left: 20px;
+      }
+      .badge {
+        display: inline-block;
+        padding: 6px 10px;
+        border-radius: 20px;
+        background: #1f6feb;
+        color: #fff;
+        font-weight: 600;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .note {
+        color: var(--muted);
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header>
+        <div class="badge">Status</div>
+        <h1>WaveWarz Base – GitHub Pages</h1>
+        <p>
+          This static landing page prevents 404s on GitHub Pages and links to the
+          primary WaveWarz resources.
+        </p>
+      </header>
+
+      <section class="card">
+        <h2>Live Documentation Links</h2>
+        <ul>
+          <li><a href="https://github.com/CandyToyBox/wavewarz-base">Repository on GitHub</a></li>
+          <li><a href="https://github.com/CandyToyBox/wavewarz-base/blob/main/README.md">Project README</a></li>
+          <li><a href="https://github.com/CandyToyBox/wavewarz-base/blob/main/DEPLOYMENT.md">Deployment Guide (Railway + Vercel)</a></li>
+          <li><a href="https://github.com/CandyToyBox/wavewarz-base/blob/main/VERCEL-DEPLOYMENT.md">Vercel Frontend Setup</a></li>
+          <li><a href="https://github.com/CandyToyBox/wavewarz-base/blob/main/docs/WALLET_INTEGRATION.md">Wallet Integration Notes</a></li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>Primary Hosting</h2>
+        <p>
+          WaveWarz is optimized for deployment on <strong>Vercel</strong> with the
+          <code>frontend</code> directory as the root. GitHub Pages now serves this
+          lightweight static overview to avoid missing-page errors.
+        </p>
+        <p class="note">
+          If you prefer Pages, the site published from the <code>docs/</code>
+          folder will appear at:
+          <a href="https://candytoybox.github.io/wavewarz-base">https://candytoybox.github.io/wavewarz-base</a>
+          after the Pages workflow runs.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>How GitHub Pages Deployment Works</h2>
+        <ol>
+          <li>GitHub Actions uploads the <code>docs/</code> folder as the Pages artifact.</li>
+          <li>The Pages deployment step publishes that artifact to the
+            <code>github-pages</code> environment.</li>
+          <li>Source should be set to <strong>GitHub Actions</strong> in repository settings
+            (the workflow configures this automatically on first run).</li>
+        </ol>
+        <p class="note">
+          Trigger a deploy by pushing to <code>main</code> or running the
+          <code>Pages</code> workflow manually.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

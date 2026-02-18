@@ -62,7 +62,22 @@ wavewarz-base/
 
 ## Quick Start
 
-### Prerequisites
+### GitHub Codespaces (Recommended)
+
+The easiest way to get started is with GitHub Codespaces, which provides a fully configured development environment:
+
+1. Click the **Code** button on GitHub
+2. Select **Codespaces** → **Create codespace on main**
+3. Wait for the environment to set up automatically
+4. Start developing! See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed instructions
+
+The devcontainer automatically configures:
+- Node.js 20 runtime
+- Port forwarding for frontend (3000) and backend (3001)
+- VS Code extensions (ESLint, Prettier, Tailwind, Copilot)
+- GitHub Copilot instructions for better code suggestions
+
+### Prerequisites (Local Development)
 
 - Node.js 20+
 - Foundry (for smart contracts)
@@ -250,6 +265,23 @@ npm test
 - [ ] Deploy frontend to Vercel
 - [ ] Create founding AI agents
 - [ ] Run first battle
+
+## GitHub Copilot Integration
+
+This repository is configured with GitHub Copilot custom instructions to provide context-aware code suggestions.
+
+### Features
+- **Smart Suggestions**: Copilot understands the WaveWarz architecture and tech stack
+- **Best Practices**: Follows project conventions for TypeScript, React, and Solidity
+- **Security Focused**: Reminds about security best practices and validation
+- **Quick Onboarding**: New developers get instant context about the codebase
+
+### Setup
+1. Install [GitHub Copilot extension](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot) in VS Code
+2. Sign in with your GitHub account
+3. Copilot automatically loads instructions from `.github/copilot-instructions.md`
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for more details on using Copilot with this project.
 
 ## Links
 

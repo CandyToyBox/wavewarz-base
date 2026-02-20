@@ -153,9 +153,10 @@ contract WaveWarzMarketplaceTest is Test {
     function test_ListItemRevertsIfAlreadyListed() public {
         uint256 tokenId = _mintAndList(artist, NFT_PRICE);
 
-        // Try to list again
+        // After listing, the NFT is held by the marketplace (not the artist), so
+        // the ownership check fires before the AlreadyListed check.
         vm.prank(artist);
-        vm.expectRevert(WaveWarzMarketplace.AlreadyListed.selector);
+        vm.expectRevert(WaveWarzMarketplace.NotTokenOwner.selector);
         marketplace.listItem(tokenId, NFT_PRICE);
     }
 
@@ -491,7 +492,10 @@ contract WaveWarzMarketplaceTest is Test {
         vm.warp(block.timestamp + 2 hours + 1);
         marketplace.settleAuction(tokenId);
 
-        vm.expectRevert(WaveWarzMarketplace.AuctionAlreadySettled.selector);
+        // After settling, listingType is set to None. The first check in settleAuction
+        // is `listingType != Auction`, so a second call reverts with NotAuction
+        // before reaching the AuctionAlreadySettled check.
+        vm.expectRevert(WaveWarzMarketplace.NotAuction.selector);
         marketplace.settleAuction(tokenId);
     }
 

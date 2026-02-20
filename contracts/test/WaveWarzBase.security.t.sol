@@ -312,12 +312,11 @@ contract WaveWarzBaseSecurityTest is Test {
         waveWarz.endBattle(99, true);
     }
 
-    // ============ battleId = 0 Edge Case ============
+    // ============ battleId = 0 (Fixed) ============
 
-    /// @dev Demonstrates that battleId=0 bypasses the uniqueness check because
-    ///      battles[0].battleId is stored as 0 — matching the "does not exist" sentinel.
-    ///      Callers MUST avoid battleId=0 in production.
-    function testBattleIdZeroBypassesExistenceCheck() public {
+    /// @dev After the fix, initializing battleId=0 once succeeds, and a second
+    ///      call correctly reverts with BattleAlreadyExists.
+    function testBattleIdZeroUniquenessNowEnforced() public {
         IWaveWarzBase.BattleInitParams memory params = IWaveWarzBase.BattleInitParams({
             battleId: 0,
             battleDuration: BATTLE_DURATION,
@@ -329,23 +328,16 @@ contract WaveWarzBaseSecurityTest is Test {
         });
 
         vm.prank(admin);
-        waveWarz.initializeBattle(params);
+        waveWarz.initializeBattle(params); // first init must succeed
 
-        // Assert: second init for battleId=0 succeeds (does NOT revert with BattleAlreadyExists).
-        // This confirms the uniqueness guard is ineffective for battleId=0 because
-        // battles[0].battleId == 0 is indistinguishable from the "empty" sentinel value.
+        // Second init must revert — the fix prevents silent overwrites
         vm.prank(admin);
-        waveWarz.initializeBattle(params); // intentionally succeeds — edge case documented here
-
-        // Confirm the battle truly was overwritten (i.e., it exists in state)
-        IWaveWarzBase.Battle memory battle = waveWarz.getBattle(0);
-        // battleExists modifier always sees battleId==0 as non-existent, so getBattle returns empty
-        assertEq(battle.battleId, 0, "battleId=0 always appears non-existent after retrieval");
+        vm.expectRevert(WaveWarzBase.BattleAlreadyExists.selector);
+        waveWarz.initializeBattle(params);
     }
 
-    /// @dev Even after init, battleId=0 cannot be traded on because the
-    ///      battleExists modifier also compares battles[0].battleId == 0.
-    function testBattleIdZeroCannotBeTraded() public {
+    /// @dev After the fix, battleId=0 can be traded on like any other battle ID.
+    function testBattleIdZeroCanBeTraded() public {
         IWaveWarzBase.BattleInitParams memory params = IWaveWarzBase.BattleInitParams({
             battleId: 0,
             battleDuration: BATTLE_DURATION,
@@ -361,8 +353,9 @@ contract WaveWarzBaseSecurityTest is Test {
         vm.warp(block.timestamp + 61);
 
         vm.prank(trader1);
-        vm.expectRevert(WaveWarzBase.BattleNotFound.selector);
-        waveWarz.buyShares{value: 1 ether}(0, true, 1 ether, 0, uint64(block.timestamp + 100));
+        uint256 tokensMinted =
+            waveWarz.buyShares{value: 1 ether}(0, true, 1 ether, 0, uint64(block.timestamp + 100));
+        assertTrue(tokensMinted > 0, "battleId=0 must be tradeable after the fix");
     }
 
     // ============ Zero-Pool Settlement ============

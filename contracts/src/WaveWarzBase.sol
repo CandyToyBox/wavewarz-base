@@ -43,6 +43,7 @@ contract WaveWarzBase is IWaveWarzBase, ReentrancyGuard {
     mapping(uint64 => address) public artistATokens;
     mapping(uint64 => address) public artistBTokens;
     mapping(uint64 => mapping(address => bool)) public hasClaimed;
+    mapping(uint64 => bool) private _battleInitialized;
 
     // ============ Errors ============
     error BattleAlreadyExists();
@@ -67,7 +68,7 @@ contract WaveWarzBase is IWaveWarzBase, ReentrancyGuard {
 
     // ============ Modifiers ============
     modifier battleExists(uint64 battleId) {
-        if (battles[battleId].battleId == 0) revert BattleNotFound();
+        if (!_battleInitialized[battleId]) revert BattleNotFound();
         _;
     }
 
@@ -88,7 +89,7 @@ contract WaveWarzBase is IWaveWarzBase, ReentrancyGuard {
      * @param params Battle initialization parameters
      */
     function initializeBattle(BattleInitParams calldata params) external {
-        if (battles[params.battleId].battleId != 0) revert BattleAlreadyExists();
+        if (_battleInitialized[params.battleId]) revert BattleAlreadyExists();
         if (params.battleDuration == 0) revert InvalidDuration();
         if (params.startTime < block.timestamp) revert InvalidStartTime();
         if (params.artistAWallet == address(0) || params.artistBWallet == address(0)) {
@@ -116,6 +117,7 @@ contract WaveWarzBase is IWaveWarzBase, ReentrancyGuard {
             paymentToken: params.paymentToken,
             admin: msg.sender
         });
+        _battleInitialized[params.battleId] = true;
 
         // Deploy ephemeral tokens for this battle
         string memory battleIdStr = _uint64ToString(params.battleId);

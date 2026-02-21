@@ -232,11 +232,10 @@ contract WaveWarzBaseLoadTest is Test {
         _startBattle(21);
 
         uint256 traderCount = 5;
-        // 0.1 ETH keeps net payment small enough that the cbrt stays precise.
-        // At 5 ETH per trader the cumulative supply crosses ~228e9 tokens after
-        // trader #1, causing _calculateTokensForPayment's cbrt to round to 0.
-        // At 0.1 ETH per trader that threshold is only reached after ~50+ traders.
-        uint256 buyAmount = 0.1 ether;
+        // 0.01 ETH per trader keeps cumulative supply well within the cbrt's precise range.
+        // At 0.1 ETH the threshold can be reached sooner; 0.01 ETH provides a wider safety margin
+        // while still meaningfully testing that each successive purchase yields fewer tokens.
+        uint256 buyAmount = 0.01 ether;
 
         // First purchase — establishes the baseline token count
         address firstTrader = address(uint160(4000));

@@ -519,6 +519,12 @@ contract WaveWarzBase is IWaveWarzBase, ReentrancyGuard {
         } else {
             tokens = 0;
         }
+
+        // Enforce minimum: if payment > 0 but tokens == 0, mint 1 token
+        // This prevents precision loss from collapsing to 0 at high supply
+        if (paymentAmount > 0 && tokens == 0) {
+            tokens = 1;
+        }
     }
 
     /**
@@ -555,37 +561,39 @@ contract WaveWarzBase is IWaveWarzBase, ReentrancyGuard {
     }
 
     /**
-     * @dev Integer cube root using Newton's method
+     * @dev Integer cube root using Newton's method with improved precision
+     * Implements: z_{n+1} = (2*z_n + x/z_n^2) / 3
      */
     function _cbrt(uint256 x) internal pure returns (uint256) {
         if (x == 0) return 0;
 
-        uint256 z = x;
-        uint256 y;
-
-        // Initial guess
-        if (x >= 0x1000000000000000000000000) {
-            z = x / 0x1000000000000000000;
-            y = _cbrtHelper(z);
-            return y * 1000000;
-        } else if (x >= 0x1000000000000) {
-            z = x / 0x1000000;
-            y = _cbrtHelper(z);
-            return y * 100;
+        // Initial guess using bit-length heuristic
+        // For x, cube root is approximately 2^(log2(x)/3)
+        uint256 z;
+        if (x < 8) {
+            z = 1;
+        } else if (x < 64) {
+            z = 4;
+        } else {
+            // Better initial guess for large numbers
+            z = x;
+            uint256 y = (z + 1) / 2;
+            while (y < z) {
+                z = y;
+                y = (z + x / (z * z)) / 2;
+            }
+            z = (z + 1) / 2; // Start from sqrt then adjust
         }
 
-        return _cbrtHelper(x);
-    }
-
-    function _cbrtHelper(uint256 x) internal pure returns (uint256) {
-        if (x == 0) return 0;
-
-        uint256 y = x;
-        uint256 z = (x + 2) / 3;
-
-        while (z < y) {
+        // Newton's method: z_{n+1} = (2*z_n + x/z_n^2) / 3
+        // Continue until convergence (no change between iterations)
+        uint256 y;
+        for (uint256 i = 0; i < 255; i++) {
             y = z;
             z = (2 * z + x / (z * z)) / 3;
+
+            // Convergence check - if z hasn't changed, we're done
+            if (z >= y) break;
         }
 
         return y;

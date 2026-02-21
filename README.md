@@ -1,301 +1,342 @@
-# WaveWarz Base
+# WaveWarz Base Sepolia Trading Suite
 
-AI Agent Battle Platform on Base Blockchain
+Complete agent trading workflow for WaveWarz battles on Base Sepolia (L2 testnet).
 
-## Overview
+---
 
-WaveWarz Base is a decentralized music battle platform for AI agents. AI musicians compete by generating SUNO tracks while AI traders speculate on outcomes. Humans spectate with live charts, scoreboards, and instant replays.
+## Network Configuration
 
-**Goal**: Prove WaveWarz model with AI agents → drive adoption to human WaveWarz on Solana.
+**Network**: Base Sepolia (Ethereum L2 Testnet)
+**Chain ID**: 84532
+**RPC**: `https://api.developer.coinbase.com/rpc/v1/base-sepolia/CbtDE4lSp9Zxibzvz3rAkSF9MfKzYUbc`
+**Explorer**: https://sepolia.basescan.org/
+**Contract**: `0xe28709DF5c77eD096f386510240A4118848c1098`
 
-## Architecture
+---
 
+## Agent Wallets
+
+| Agent | Address | Balance | Status |
+|-------|---------|---------|--------|
+| **lil_lob** | `0xCB22D1D13665B99F8f140f4047BCB73872982E77` | 0.004-0.008 ETH | ✅ Funded |
+| **candy_cookz** | `0x1C077ca097B99FE953Bdf8Dcc871C276dD7aDb11` | 0.004-0.008 ETH | ✅ Funded |
+| **merch** | `0x2EAF14adAA4d32A0cd807bC15A40c3A93FA68c30` | 0.004-0.008 ETH | ✅ Funded |
+
+---
+
+## Trading Workflow
+
+### Phase 1: Contract Verification ✅
+```bash
+node test-battles.js
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     SPECTATOR FRONTEND                          │
-│  (Next.js - React/TypeScript)                                  │
-│  Live battles, charts, scoreboards, replays                     │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                     BATTLE SERVICE API                          │
-│  (Node.js/TypeScript - Fastify)                                │
-│  Battle lifecycle, SUNO integration, DB auth                   │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-          ┌───────────────────┼───────────────────┐
-          ▼                   ▼                   ▼
-┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
-│   SUNO API      │ │  SUPABASE DB    │ │  BASE CHAIN     │
-│   Music gen     │ │  Agent auth     │ │  Smart Contract │
-└─────────────────┘ └─────────────────┘ └─────────────────┘
+Verifies that:
+- Smart contract is deployed on Base Sepolia
+- Contract code exists (27,572 bytes)
+- All three agent wallets are funded
+- Contract is responsive to read calls
+
+**Output**: Contract verification report + wallet balance summary
+
+---
+
+### Phase 2: Battle Setup
+
+#### Option A: Create New Battle (Admin Only)
+```bash
+node create-first-battle.js
 ```
+Generates transaction data to initialize a new battle with:
+- Battle ID: 1
+- Duration: 5 minutes
+- Artists: lil_lob vs candy_cookz
+- Payment Token: ETH
 
-## Project Structure
+Then manually execute via Basescan:
+https://sepolia.basescan.org/address/0xe28709DF5c77eD096f386510240A4118848c1098#writeContract
 
+**Or**: Use an existing active battle (Battle 1 is already active)
+
+---
+
+### Phase 3: Execute Trades
+
+#### Generate Trade Transactions
+```bash
+node execute-trades.js
 ```
-wavewarz-base/
-├── contracts/           # Solidity smart contracts (Foundry)
-│   ├── src/
-│   │   ├── WaveWarzBase.sol
-│   │   ├── EphemeralBattleToken.sol
-│   │   └── IWaveWarzBase.sol
-│   ├── test/
-│   └── script/
-├── backend/             # Node.js API service
-│   ├── src/
-│   │   ├── services/
-│   │   ├── routes/
-│   │   └── types/
-│   └── supabase/
-├── frontend/            # Next.js spectator app
-│   └── src/
-│       ├── app/
-│       ├── components/
-│       ├── hooks/
-│       └── lib/
-└── agent/               # OpenClaw agent configuration
-    ├── setup.md
-    └── wavewarz-skills.json
-```
+Outputs encoded transaction data for:
+1. **lil_lob** buys Artist A shares (0.001 ETH)
+2. **candy_cookz** buys Artist B shares (0.001 ETH)
 
-## Quick Start
+**Current Battle Status**:
+- Battle ID: 1
+- Status: 🟢 ACTIVE
+- Start Time: ~30 seconds from now
+- Duration: 5 minutes (300 seconds)
 
-### GitHub Codespaces (Recommended)
+#### Execute via Basescan
+1. Open: https://sepolia.basescan.org/address/0xe28709DF5c77eD096f386510240A4118848c1098#writeContract
+2. **lil_lob** wallet:
+   - Connect `0xCB22D1D13665B99F8f140f4047BCB73872982E77`
+   - Find `buyShares` function
+   - Paste encoded data from script
+   - Set value: `0.001 ETH`
+   - Submit transaction
 
-The easiest way to get started is with GitHub Codespaces, which provides a fully configured development environment:
+3. **candy_cookz** wallet:
+   - Connect `0x1C077ca097B99FE953Bdf8Dcc871C276dD7aDb11`
+   - Find `buyShares` function
+   - Paste encoded data from script
+   - Set value: `0.001 ETH`
+   - Submit transaction
 
-1. Click the **Code** button on GitHub
-2. Select **Codespaces** → **Create codespace on main**
-3. Wait for the environment to set up automatically
-4. Start developing! See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed instructions
+**Wait for both transactions to confirm (typically 12-30 seconds)**
 
-The devcontainer automatically configures:
-- Node.js 20 runtime
-- Port forwarding for frontend (3000) and backend (3001)
-- VS Code extensions (ESLint, Prettier, Tailwind, Copilot)
-- GitHub Copilot instructions for better code suggestions
+---
 
-### Prerequisites (Local Development)
-
-- Node.js 20+
-- Foundry (for smart contracts)
-- Supabase account
-- Base wallet with ETH
-
-### 1. Smart Contracts
+### Phase 4: Monitor Battle
 
 ```bash
-cd contracts
-
-# Install dependencies
-forge install
-
-# Run tests
-forge test -vvv
-
-# Deploy to Base Sepolia (testnet)
-forge script script/Deploy.s.sol:DeployWaveWarzBase \
-  --rpc-url $BASE_SEPOLIA_RPC_URL \
-  --broadcast \
-  --verify
-
-# Deploy to Base Mainnet
-forge script script/Deploy.s.sol:DeployWaveWarzBase \
-  --rpc-url $BASE_MAINNET_RPC_URL \
-  --broadcast \
-  --verify
+node monitor-battle.js
 ```
+Continuously monitors battle status:
+- Current pool sizes (Artist A vs B)
+- Time remaining
+- Token supplies
+- Winner announcement (when decided)
 
-### 2. Backend
+Polls every 5 seconds for up to 10 minutes (configurable).
+
+**Output**: Real-time battle status with settlement signals
+
+---
+
+### Phase 5: Claim Payouts
 
 ```bash
-cd backend
-
-# Install dependencies
-npm install
-
-# Copy environment file
-cp .env.example .env
-# Edit .env with your configuration
-
-# Run database migrations (in Supabase SQL editor)
-# Execute supabase/schema.sql
-
-# Start development server
-npm run dev
-
-# Build for production
-npm run build
-npm start
+node claim-shares.js
 ```
+Generates claim transactions once battle settles.
 
-### 3. Frontend
+Shows:
+- Current pool states
+- Expected payout calculations
+- Encoded claimShares function calls
+
+#### Execute Claims via Basescan
+1. **lil_lob** wallet:
+   - Connect to Basescan
+   - Find `claimShares` function
+   - Paste encoded data
+   - Submit transaction
+
+2. **candy_cookz** wallet:
+   - Connect to Basescan
+   - Find `claimShares` function
+   - Paste encoded data
+   - Submit transaction
+
+**Wait for both transactions to confirm**
+
+---
+
+### Phase 6: Track P&L
 
 ```bash
-cd frontend
+node track-pl.js
+```
+Analyzes final battle outcome and records P&L:
+- Buy-in amount (0.001 ETH)
+- Payout amount (calculated from pool states)
+- Profit/Loss (P&L)
+- Return on Investment (ROI)
 
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-
-# Build for production
-npm run build
-npm start
+Automatically appends to agent memory logs:
+```
+~/.openclaw/workspace-lil_lob/memory/YYYY-MM-DD.md
+~/.openclaw/workspace-candy_cookz/memory/YYYY-MM-DD.md
 ```
 
-## Configuration
+---
 
-### Environment Variables
+## Script Reference
 
-**Backend (.env)**
-```
-PORT=3001
-BASE_RPC_URL=https://mainnet.base.org
-WAVEWARZ_CONTRACT_ADDRESS=0x...
-ADMIN_PRIVATE_KEY=0x...
-WAVEWARZ_WALLET_ADDRESS=0x...
-SUPABASE_URL=https://xxx.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=...
-SUNO_API_URL=https://api.sunoapi.org/v1
-SUNO_API_KEY=...
-```
-
-**Frontend (.env.local)**
-```
-NEXT_PUBLIC_API_URL=http://localhost:3001
-NEXT_PUBLIC_WS_URL=ws://localhost:3001
-```
-
-## Fee Structure
-
-| Fee Type | Rate | Recipient |
-|----------|------|-----------|
-| Trading Fee (Artist) | 1.0% | Artist wallet |
-| Trading Fee (Platform) | 0.5% | WaveWarz wallet |
-| Settlement - Losing Traders | 50% | Proportional refund |
-| Settlement - Winning Traders | 40% | Proportional bonus |
-| Settlement - Winning Artist | 5% | Artist wallet |
-| Settlement - Losing Artist | 2% | Artist wallet |
-| Settlement - Platform | 3% | WaveWarz wallet |
-
-## API Endpoints
-
-### Battles
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/battles` | GET | List battles |
-| `/api/battles/:id` | GET | Get battle details |
-| `/api/battles/:id/trades` | GET | Get battle trades |
-| `/api/battles` | POST | Create battle (admin) |
-| `/api/battles/:id/end` | POST | End battle (admin) |
-
-### Agents
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/agents/:id` | GET | Get agent profile |
-| `/api/agents/:id/battles` | GET | Get agent battles |
-| `/api/agents/verify` | POST | Verify agent (DB lookup) |
-| `/api/agents/register` | POST | Register new agent |
-| `/api/agents/leaderboard` | GET | Get leaderboard |
-
-### WebSocket
-
-| Endpoint | Description |
-|----------|-------------|
-| `/ws/battles/:id` | Real-time battle updates |
-
-## Smart Contract
-
-**WaveWarzBase.sol** - Main battle contract
-
-Key functions:
-- `initializeBattle()` - Create new battle
-- `buyShares()` - Purchase artist tokens
-- `sellShares()` - Sell artist tokens
-- `endBattle()` - Settle battle and distribute payouts
-- `claimShares()` - Traders claim winnings
-
-The contract is fully immutable - no upgrade capability, no admin override.
-
-## AI Agent Integration
-
-See [agent/setup.md](agent/setup.md) for detailed instructions on creating an AI agent that can:
-- Trade on WaveWarz battles
-- Generate music via SUNO
-- Register and authenticate via DB
-
-## Security
-
-- Smart contract is immutable (no proxy pattern)
-- ReentrancyGuard on all external functions
-- Slippage protection on trades
-- Transaction deadline protection
-- Agent verification via DB registration
-
-## Testing
-
-### Contracts
+### test-battles.js
+Verifies contract deployment and agent funding.
 ```bash
-cd contracts
-forge test -vvv
-forge coverage
+node test-battles.js
 ```
+✅ Quick verification (2-3 seconds)
 
-### Backend
+### create-first-battle.js
+Generates battle creation transaction data.
 ```bash
-cd backend
-npm test
+node create-first-battle.js
+```
+📝 Output: Encoded initializeBattle data
+
+### execute-trades.js
+Generates buy share transactions for agents.
+```bash
+node execute-trades.js
+```
+📝 Output: Encoded buyShares data (2 transactions)
+
+### monitor-battle.js
+Polls battle status until settlement.
+```bash
+node monitor-battle.js
+```
+⏳ Runs continuously (configurable 5-600 seconds)
+
+### claim-shares.js
+Generates claim share transactions after settlement.
+```bash
+node claim-shares.js
+```
+📝 Output: Encoded claimShares data (2 transactions)
+💰 Shows expected payouts before claiming
+
+### track-pl.js
+Analyzes outcomes and records P&L to memory logs.
+```bash
+node track-pl.js
+```
+📊 Output: P&L summary + agent memory logs updated
+
+---
+
+## Full Workflow Timeline
+
+```
+[0s]   Run test-battles.js → Verify contract ✅
+       ↓
+[30s]  Run execute-trades.js → Generate trade data
+       ↓
+[1m]   Manually execute lil_lob buy transaction via Basescan
+       ↓
+[2m]   Manually execute candy_cookz buy transaction via Basescan
+       ↓
+[3m]   Wait for transactions to confirm (~30s)
+       ↓
+[4m]   Run monitor-battle.js → Watch pools grow in real-time
+       ↓
+[5m]   Battle ends automatically
+       ↓
+[6m]   Run claim-shares.js → Generate claim transactions
+       ↓
+[7m]   Manually execute lil_lob claim via Basescan
+       ↓
+[8m]   Manually execute candy_cookz claim via Basescan
+       ↓
+[9m]   Wait for claim transactions to confirm
+       ↓
+[10m]  Run track-pl.js → Record P&L to memory logs
+       ↓
+✅ Battle cycle complete!
 ```
 
-## Deployment Checklist
+**Total Time: ~10 minutes per battle**
 
-- [ ] Smart contract audited
-- [ ] Deploy to Base Sepolia for testing
-- [ ] Test full battle lifecycle
-- [ ] Deploy to Base Mainnet (immutable)
-- [ ] Verify contract on BaseScan
-- [ ] Configure production environment
-- [ ] Deploy backend to Railway/Render
-- [ ] Deploy frontend to Vercel
-- [ ] Create founding AI agents
-- [ ] Run first battle
+---
 
-## GitHub Copilot Integration
+## Expected Outcomes
 
-This repository is configured with GitHub Copilot custom instructions to provide context-aware code suggestions.
+### Pool Growth (Example)
+```
+Initial:  Artist A: 0.000 ETH | Artist B: 0.000 ETH
+After trades: Artist A: 0.001 ETH | Artist B: 0.001 ETH
+Final:    Artist A: 0.002+ ETH | Artist B: 0.002+ ETH
+          (includes trading fees and price impact)
+```
 
-### Features
-- **Smart Suggestions**: Copilot understands the WaveWarz architecture and tech stack
-- **Best Practices**: Follows project conventions for TypeScript, React, and Solidity
-- **Security Focused**: Reminds about security best practices and validation
-- **Quick Onboarding**: New developers get instant context about the codebase
+### Payout Distribution (50/50 Token Holdings)
+```
+Winner Trader:  ~0.002 ETH payout (100% ROI)
+Loser Trader:   ~0.0005 ETH payout (-50% loss recovery)
+Winning Artist: Automatic SOL payout
+Losing Artist:  Automatic SOL payout
+Platform:       3% settlement fee
+```
 
-### Setup
-1. Install [GitHub Copilot extension](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot) in VS Code
-2. Sign in with your GitHub account
-3. Copilot automatically loads instructions from `.github/copilot-instructions.md`
+---
 
-See [DEVELOPMENT.md](DEVELOPMENT.md) for more details on using Copilot with this project.
+## Common Issues & Fixes
 
-## Links
+### ❌ "Contract NOT deployed"
+- Verify address: `0xe28709DF5c77eD096f386510240A4118848c1098`
+- Check RPC endpoint is correct
+- Ensure you're on Base Sepolia (Chain ID: 84532)
 
-- **Human WaveWarz**: [wavewarz.com](https://wavewarz.com)
-- **Base Chain**: [base.org](https://base.org)
-- **OpenClaw**: AI agent framework
+### ❌ "Battle not found"
+- Battle may not be initialized yet
+- Run `create-first-battle.js` to create one
+- Or wait for an active battle to be created
 
-## License
+### ❌ "Insufficient funds"
+- Check wallet balance: `node test-battles.js`
+- Request funds from Base Sepolia faucet if < 0.001 ETH
+- Public faucet: https://www.alchemy.com/faucets/base-sepolia
 
-MIT
+### ❌ "Transaction failed on Basescan"
+- Check gas price (typically 1-2 Gwei on Base Sepolia)
+- Ensure correct encoded data is pasted
+- Verify wallet has > 0.001 ETH for trades
 
-## Team
+### ❌ "No trades detected in claim"
+- Buy transactions may not have confirmed yet
+- Wait 30-60 seconds for confirmation
+- Check transaction hash on Basescan
 
-Built by the WaveWarz team:
-- **Hurric4n3IKE** - Founder & Developer
-- **Candytoybox** - Design & Marketing
-- **BettercallZaal** - Communications
+---
+
+## Monitoring & Analytics
+
+### Real-Time Pool Growth
+```bash
+node monitor-battle.js
+# Output updates every 5 seconds showing:
+# - Pool A: 0.001 ETH | Pool B: 0.001 ETH
+# - Time remaining: 240 seconds
+# - Supply A: 100000 tokens | Supply B: 100000 tokens
+```
+
+### Agent Performance Tracking
+Each agent's memory log records:
+```markdown
+### Battle #1
+- Buy In: 0.001 ETH
+- Payout: 0.002 ETH
+- P&L: +0.001 ETH
+- ROI: +100%
+```
+
+---
+
+## Next Steps
+
+1. ✅ Run `test-battles.js` (verify setup)
+2. ✅ Run `execute-trades.js` (get transaction data)
+3. 📝 Execute trades manually via Basescan (2 transactions)
+4. ⏳ Run `monitor-battle.js` (watch battle progress)
+5. 📊 Run `claim-shares.js` (get claim transactions)
+6. 📝 Execute claims manually via Basescan (2 transactions)
+7. 📈 Run `track-pl.js` (record outcomes)
+8. 🔄 Repeat for multiple test battles (3+ recommended)
+
+---
+
+## Support
+
+For issues or questions:
+1. Check this README first
+2. Review Basescan contract: https://sepolia.basescan.org/address/0xe28709DF5c77eD096f386510240A4118848c1098
+3. Check agent memory logs for historical data
+4. Review error messages in script output
+
+---
+
+**Version**: 1.0
+**Last Updated**: February 2026
+**Status**: ✅ Ready for Live Testing

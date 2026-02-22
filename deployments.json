@@ -1,0 +1,24 @@
+{
+  "base-sepolia": {
+    "deployedAt": "2026-02-21",
+    "deployer": "0xe34EeefA494bE9232cd2aD5d28637A8272159F2F",
+    "contracts": {
+      "WaveWarzBase": "0xa4B10AF81E3ED591A5d5b1D621bB6B76C9D4CA43",
+      "WaveWarzMusicNFT": "0x813c13d534660E85E37ee71bd3595724FC9D782A",
+      "WaveWarzMarketplace": "0x227a3B842d8692a5bB961395f301Eff83B0499F5"
+    },
+    "explorer": {
+      "WaveWarzBase": "https://sepolia.basescan.org/address/0xa4B10AF81E3ED591A5d5b1D621bB6B76C9D4CA43",
+      "WaveWarzMusicNFT": "https://sepolia.basescan.org/address/0x813c13d534660E85E37ee71bd3595724FC9D782A",
+      "WaveWarzMarketplace": "https://sepolia.basescan.org/address/0x227a3B842d8692a5bB961395f301Eff83B0499F5"
+    }
+  },
+  "base-mainnet": {
+    "deployedAt": null,
+    "contracts": {
+      "WaveWarzBase": "",
+      "WaveWarzMusicNFT": "",
+      "WaveWarzMarketplace": ""
+    }
+  }
+}

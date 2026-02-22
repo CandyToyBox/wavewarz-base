@@ -29,9 +29,9 @@ export const CONTRACTS = {
   },
   // Base Sepolia Testnet
   testnet: {
-    waveWarzBase: '0xe28709DF5c77eD096f386510240A4118848c1098' as `0x${string}`,
-    musicNFT: '' as `0x${string}`,
-    marketplace: '' as `0x${string}`,
+    waveWarzBase: '0xa4B10AF81E3ED591A5d5b1D621bB6B76C9D4CA43' as `0x${string}`,
+    musicNFT: '0x813c13d534660E85E37ee71bd3595724FC9D782A' as `0x${string}`,
+    marketplace: '0x227a3B842d8692a5bB961395f301Eff83B0499F5' as `0x${string}`,
   },
 } as const;
 

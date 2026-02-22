@@ -561,38 +561,38 @@ contract WaveWarzBase is IWaveWarzBase, ReentrancyGuard {
     }
 
     /**
-     * @dev Integer cube root using Newton's method with improved precision
+     * @dev Integer cube root using Newton's method.
      * Implements: z_{n+1} = (2*z_n + x/z_n^2) / 3
+     *
+     * Bug fix: the previous implementation started z = x in the initial guess loop,
+     * causing z*z to overflow uint256 for inputs x > ~1.07e38 (e.g. 1000 USDC with
+     * 18 decimals in a single trade). Replaced with a safe bit-length based estimate:
+     * z_0 = 2^ceil(bitlen(x)/3), which always satisfies z_0^2 < 2^256.
      */
     function _cbrt(uint256 x) internal pure returns (uint256) {
         if (x == 0) return 0;
 
-        // Initial guess using bit-length heuristic
-        // For x, cube root is approximately 2^(log2(x)/3)
+        // Safe initial guess: 2^ceil(bitLength(x) / 3)
+        // This never overflows because z_0 <= 2^86 for any uint256 x,
+        // so z_0 * z_0 <= 2^172 << 2^256.
         uint256 z;
-        if (x < 8) {
-            z = 1;
-        } else if (x < 64) {
-            z = 4;
-        } else {
-            // Better initial guess for large numbers
-            z = x;
-            uint256 y = (z + 1) / 2;
-            while (y < z) {
-                z = y;
-                y = (z + x / (z * z)) / 2;
+        {
+            uint256 bits = 0;
+            uint256 tmp = x;
+            while (tmp != 0) {
+                bits++;
+                tmp >>= 1;
             }
-            z = (z + 1) / 2; // Start from sqrt then adjust
+            // ceil(bits / 3) rounded up
+            z = 1 << ((bits + 2) / 3);
         }
 
         // Newton's method: z_{n+1} = (2*z_n + x/z_n^2) / 3
-        // Continue until convergence (no change between iterations)
+        // Monotonically decreasing until convergence; safe because z_0 is always >= cbrt(x).
         uint256 y;
         for (uint256 i = 0; i < 255; i++) {
             y = z;
             z = (2 * z + x / (z * z)) / 3;
-
-            // Convergence check - if z hasn't changed, we're done
             if (z >= y) break;
         }
 

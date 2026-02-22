@@ -136,8 +136,10 @@ contract WaveWarzMarketplace is IERC721Receiver, ReentrancyGuard, Ownable {
     function listItem(uint256 tokenId, uint256 price) external nonReentrant {
         IERC721 nft = IERC721(nftContract);
 
-        if (nft.ownerOf(tokenId) != msg.sender) revert NotTokenOwner();
+        // Check AlreadyListed before ownership so the error is reachable even if the
+        // marketplace currently holds the NFT (e.g. state inconsistency defense-in-depth).
         if (listingType[tokenId] != ListingType.None) revert AlreadyListed();
+        if (nft.ownerOf(tokenId) != msg.sender) revert NotTokenOwner();
         if (price == 0) revert InvalidPrice();
 
         // Transfer NFT to marketplace
@@ -225,8 +227,8 @@ contract WaveWarzMarketplace is IERC721Receiver, ReentrancyGuard, Ownable {
     ) external nonReentrant {
         IERC721 nft = IERC721(nftContract);
 
-        if (nft.ownerOf(tokenId) != msg.sender) revert NotTokenOwner();
         if (listingType[tokenId] != ListingType.None) revert AlreadyListed();
+        if (nft.ownerOf(tokenId) != msg.sender) revert NotTokenOwner();
         if (startingPrice == 0) revert InvalidPrice();
         if (duration < MIN_AUCTION_DURATION || duration > MAX_AUCTION_DURATION) {
             revert InvalidDuration();

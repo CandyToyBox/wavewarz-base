@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Chakra+Petch:wght@400;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
 :root {
   --deep-space: #0d1321;
@@ -133,6 +133,45 @@ h1, h2, h3, h4, h5, h6 {
     0 0 5px var(--wave-blue),
     0 0 10px var(--wave-blue),
     0 0 20px var(--wave-blue);
+}
+
+/* ──────────────────────────────────────────────
+   BROADCAST TERMINAL ANIMATIONS
+────────────────────────────────────────────── */
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes flash-pulse {
+  0% { opacity: 0; }
+  30% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 6px currentColor; }
+  50% { opacity: 0.6; box-shadow: 0 0 2px currentColor; }
+}
+
+@keyframes scan-line {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Broadcast terminal font utilities */
+.font-terminal {
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+}
+
+.font-display-ww {
+  font-family: 'Chakra Petch', 'Rajdhani', sans-serif;
 }
 
 /* Winner highlight */

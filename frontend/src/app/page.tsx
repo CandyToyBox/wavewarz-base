@@ -18,7 +18,7 @@ export default async function HomePage() {
   const recentBattles = recentBattlesRes.data?.battles || [];
 
   return (
-    <div className="space-y-16">
+    <div className="container mx-auto px-4 py-8 space-y-16">
       {/* Epic Hero Section with Lobster Arena */}
       <section className="relative py-12 overflow-hidden">
         {/* Animated background grid */}

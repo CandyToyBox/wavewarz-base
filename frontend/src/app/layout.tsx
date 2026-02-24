@@ -21,7 +21,7 @@ export default function RootLayout({
       <body className="min-h-screen">
         <Web3Provider>
           <Header />
-          <main className="container mx-auto px-4 py-8">
+          <main className="min-h-[calc(100vh-60px)]">
             <ErrorBoundary>
               {children}
             </ErrorBoundary>
@@ -35,59 +35,83 @@ export default function RootLayout({
 
 function Header() {
   return (
-    <header className="border-b border-wave-blue/20 bg-deep-space/95 sticky top-0 z-50 backdrop-blur-sm">
-      <div className="container mx-auto px-4 py-4">
+    <header
+      className="sticky top-0 z-50 backdrop-blur-sm"
+      style={{
+        background: 'rgba(5,8,16,0.97)',
+        borderBottom: '1px solid rgba(126,193,251,0.12)',
+        boxShadow: '0 1px 20px rgba(0,0,0,0.5)',
+      }}
+    >
+      <div className="px-6 py-3">
         <nav className="flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-wave-blue to-action-green flex items-center justify-center">
-              <span className="text-deep-space font-rajdhani font-bold text-xl">W</span>
+          <Link href="/" className="flex items-center gap-3 group">
+            <div
+              className="w-9 h-9 rounded flex items-center justify-center relative overflow-hidden"
+              style={{
+                background: 'linear-gradient(135deg, #7ec1fb20, #95fe7c20)',
+                border: '1px solid rgba(126,193,251,0.3)',
+              }}
+            >
+              <span
+                className="font-black text-lg relative z-10"
+                style={{
+                  fontFamily: "'Chakra Petch', sans-serif",
+                  background: 'linear-gradient(135deg, #7ec1fb, #95fe7c)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                }}
+              >
+                W
+              </span>
             </div>
             <div>
-              <h1 className="font-rajdhani text-xl font-bold text-white">
-                WaveWarz
-              </h1>
-              <p className="text-xs text-wave-blue">AI Battle Platform</p>
+              <span
+                className="font-black text-lg leading-none"
+                style={{
+                  fontFamily: "'Chakra Petch', sans-serif",
+                  color: '#7ec1fb',
+                  textShadow: '0 0 12px rgba(126,193,251,0.4)',
+                  letterSpacing: '-0.02em',
+                }}
+              >
+                WAVE<span style={{ color: '#95fe7c', textShadow: '0 0 12px rgba(149,254,124,0.4)' }}>WARZ</span>
+              </span>
+              <p className="font-mono text-[9px] tracking-[0.2em]" style={{ color: 'rgba(126,193,251,0.5)' }}>
+                BASE · AGENT BATTLES
+              </p>
             </div>
           </Link>
 
-          <div className="flex items-center gap-6">
-            <Link
-              href="/battles"
-              className="text-ww-grey hover:text-white transition-colors"
-            >
-              Battles
-            </Link>
-            <Link
-              href="/marketplace"
-              className="text-ww-grey hover:text-white transition-colors"
-            >
-              Marketplace
-            </Link>
-            <Link
-              href="/queue"
-              className="text-ww-grey hover:text-white transition-colors"
-            >
-              Queue
-            </Link>
-            <Link
-              href="/leaderboard"
-              className="text-ww-grey hover:text-white transition-colors"
-            >
-              Leaderboard
-            </Link>
-            <Link
-              href="/about"
-              className="text-ww-grey hover:text-white transition-colors"
-            >
-              About
-            </Link>
+          <div className="flex items-center gap-5">
+            {[
+              { href: '/battles', label: 'BATTLES' },
+              { href: '/marketplace', label: 'MARKETPLACE' },
+              { href: '/queue', label: 'QUEUE' },
+              { href: '/leaderboard', label: 'LEADERBOARD' },
+              { href: '/about', label: 'ABOUT' },
+            ].map(({ href, label }) => (
+              <Link
+                key={href}
+                href={href}
+                className="font-mono text-[11px] tracking-[0.12em] transition-colors hover:text-white"
+                style={{ color: 'rgba(126,193,251,0.55)' }}
+              >
+                {label}
+              </Link>
+            ))}
             <a
               href="https://wavewarz.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="btn-secondary text-sm py-2"
+              className="font-mono text-[11px] px-3 py-1.5 rounded transition-all"
+              style={{
+                border: '1px solid rgba(126,193,251,0.25)',
+                color: '#7ec1fb',
+                letterSpacing: '0.08em',
+              }}
             >
-              Human WaveWarz
+              ↗ SOLANA
             </a>
             <WalletConnect />
           </div>

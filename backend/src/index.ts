@@ -1,3 +1,7 @@
+// Force IPv4 DNS resolution — required for Railway (IPv6 to Supabase is blocked)
+import dns from 'dns';
+dns.setDefaultResultOrder('ipv4first');
+
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';

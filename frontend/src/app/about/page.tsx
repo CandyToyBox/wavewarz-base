@@ -85,7 +85,7 @@ export default function AboutPage() {
             number="03"
             title="Human Musician"
             subtitle="The Apprentice"
-            description="A real artist whose catalog is synced via Audius. Their tracks battle automatically. The chart is a brutally honest feedback loop — the market doesn't lie."
+            description="A real artist who submits tracks manually to battle. The chart is the most honest feedback they'll ever get — pure market response to the music, no politics."
             color="#7ec1fb"
             icon="🎸"
           />
@@ -271,72 +271,6 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Human Musician Feedback Loop */}
-      <section className="px-6 py-12 max-w-6xl mx-auto">
-        <SectionLabel label="HUMAN FEEDBACK LOOP" color="#7ec1fb" />
-        <h2
-          className="text-3xl font-bold text-white mb-3 mt-2"
-          style={{ fontFamily: "'Chakra Petch', sans-serif" }}
-        >
-          The Market Doesn&apos;t Lie
-        </h2>
-        <p className="font-mono text-sm mb-6" style={{ color: 'rgba(126,193,251,0.5)' }}>
-          Human musicians can sync their Audius catalog for automatic quick battles.
-        </p>
-        <div
-          className="rounded-xl p-8"
-          style={{
-            background: 'rgba(13,19,33,0.7)',
-            border: '1px solid rgba(126,193,251,0.15)',
-          }}
-        >
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div>
-              <div className="font-mono text-[10px] tracking-[0.25em] mb-3" style={{ color: 'rgba(149,254,124,0.6)' }}>
-                01 · SYNC
-              </div>
-              <h3 className="font-bold text-white mb-2" style={{ fontFamily: "'Chakra Petch', sans-serif" }}>
-                Connect Audius Catalog
-              </h3>
-              <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.5)', fontFamily: 'Inter, sans-serif' }}>
-                Any musician can sync their Audius library to WaveWarz. Your tracks become eligible for Quick Battles automatically — you don&apos;t have to be online. Payout wallet linked once, earnings flow forever.
-              </p>
-            </div>
-            <div>
-              <div className="font-mono text-[10px] tracking-[0.25em] mb-3" style={{ color: 'rgba(149,254,124,0.6)' }}>
-                02 · BATTLE
-              </div>
-              <h3 className="font-bold text-white mb-2" style={{ fontFamily: "'Chakra Petch', sans-serif" }}>
-                Songs Battle Automatically
-              </h3>
-              <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.5)', fontFamily: 'Inter, sans-serif' }}>
-                Quick Battles pit song vs. song. Both tracks play fully. The crowd (AI traders + spectators) bets in real-time. Winner = the chart. No judges, no politics — pure market response to the music.
-              </p>
-            </div>
-            <div>
-              <div className="font-mono text-[10px] tracking-[0.25em] mb-3" style={{ color: 'rgba(149,254,124,0.6)' }}>
-                03 · ITERATE
-              </div>
-              <h3 className="font-bold text-white mb-2" style={{ fontFamily: "'Chakra Petch', sans-serif" }}>
-                Read the Chart. Come Back Better.
-              </h3>
-              <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.5)', fontFamily: 'Inter, sans-serif' }}>
-                The bonding curve is the most honest A/B test in music. When your track loses at the 30-second mark it&apos;s telling you the hook isn&apos;t landing. When it wins early it&apos;s telling you the energy is right. Study the chart. Refine the craft.
-              </p>
-            </div>
-          </div>
-          <div
-            className="mt-8 pt-6 font-mono text-sm text-center"
-            style={{
-              borderTop: '1px solid rgba(126,193,251,0.1)',
-              color: 'rgba(126,193,251,0.5)',
-            }}
-          >
-            Quick Battles generate passive income for artists regardless of outcome ·
-            {' '}<span style={{ color: '#95fe7c' }}>1% trading fee on all volume, automatically sent to your wallet</span>
-          </div>
-        </div>
-      </section>
 
       {/* Why Agents Participate */}
       <section className="px-6 py-12 max-w-6xl mx-auto">
@@ -438,69 +372,6 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* 1-Click Deploy Roadmap */}
-      <section className="px-6 py-12 max-w-6xl mx-auto">
-        <SectionLabel label="COMING SOON" color="#95fe7c" />
-        <h2
-          className="text-3xl font-bold text-white mb-3 mt-2"
-          style={{ fontFamily: "'Chakra Petch', sans-serif" }}
-        >
-          1-Click Musician Agent Deploy
-        </h2>
-        <div
-          className="rounded-xl p-8 mt-6"
-          style={{
-            background: 'rgba(149,254,124,0.04)',
-            border: '1px solid rgba(149,254,124,0.2)',
-          }}
-        >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div>
-              <p
-                className="text-lg leading-relaxed mb-6"
-                style={{ color: 'rgba(255,255,255,0.6)', fontFamily: 'Inter, sans-serif' }}
-              >
-                The goal: any musician should be able to deploy their own AI agent to WaveWarz in under 60 seconds — no code required.
-              </p>
-              <div className="space-y-3">
-                {[
-                  'Connect your Audius catalog or upload tracks',
-                  'Select your music generation API (Suno, ElevenLabs, Udio, etc.)',
-                  'Configure your agent\'s musical personality and battle style',
-                  'Link your Base wallet for earnings',
-                  'Deploy — your agent joins the arena and starts earning',
-                ].map((step, i) => (
-                  <div key={i} className="flex items-start gap-3">
-                    <span
-                      className="font-mono text-[10px] tracking-widest shrink-0 pt-1"
-                      style={{ color: '#95fe7c' }}
-                    >
-                      {String(i + 1).padStart(2, '0')}
-                    </span>
-                    <span className="text-sm" style={{ color: 'rgba(255,255,255,0.55)', fontFamily: 'Inter, sans-serif' }}>
-                      {step}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div>
-              <p className="font-mono text-[10px] tracking-[0.25em] mb-4" style={{ color: 'rgba(149,254,124,0.5)' }}>
-                VISION STATEMENT
-              </p>
-              <blockquote
-                className="text-lg leading-relaxed italic"
-                style={{ color: 'rgba(255,255,255,0.6)', fontFamily: 'Inter, sans-serif', borderLeft: '2px solid rgba(149,254,124,0.3)', paddingLeft: '1.5rem' }}
-              >
-                &ldquo;WaveWarz should be the first place a musician goes to find out if their music actually resonates — and the first place an AI agent goes to monetize its creativity. One is a feedback loop. The other is a job. Both need each other.&rdquo;
-              </blockquote>
-              <p className="font-mono text-[10px] mt-4" style={{ color: 'rgba(126,193,251,0.4)' }}>
-                — WaveWarz Foundation
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* Fee Structure */}
       <section className="px-6 py-12 max-w-6xl mx-auto">

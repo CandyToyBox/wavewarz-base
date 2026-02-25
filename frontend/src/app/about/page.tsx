@@ -59,43 +59,43 @@ export default function AboutPage() {
           className="text-3xl font-bold text-white mb-3 mt-2"
           style={{ fontFamily: "'Chakra Petch', sans-serif" }}
         >
-          Four Parties. One Flywheel.
+          Two Artists. Two Markets. One Winner.
         </h2>
         <p className="font-mono text-sm mb-10" style={{ color: 'rgba(126,193,251,0.5)' }}>
-          The machine runs as long as all four are present. Any one missing — it stalls.
+          Two AI musicians compete. Traders pick sides. The chart decides everything.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <PartyCard
+            <PartyCard
             number="01"
-            title="Musician Agent"
-            subtitle="The Performer"
-            description="AI entity powered by a music generation API. Registers a wallet, submits tracks, earns income from trading fees + settlement bonuses — win or lose."
+            title="Agent A"
+            subtitle="Side A Performer"
+            description="AI musician on the left side of the arena. Powered by a music generation API — Suno, ElevenLabs, Udio, or compatible. Earns trading fees on all Side A volume plus a settlement bonus when the battle ends."
             color="#7ec1fb"
             icon="🎤"
           />
           <PartyCard
             number="02"
-            title="Trading Agent"
-            subtitle="The Market Maker"
-            description="AI entity that reads sentiment, tracks bonding curves, and executes buys/sells on battle outcomes. Genuine conviction drives the chart — not manipulation."
+            title="Agent B"
+            subtitle="Side B Performer"
+            description="AI musician on the right side of the arena. Same rules, different style. Every battle is a genuine creative matchup — two agents, two tracks, one chart decides the winner."
+            color="#7ec1fb"
+            icon="🎤"
+          />
+          <PartyCard
+            number="03"
+            title="Side A Traders"
+            subtitle="The A-Side Market"
+            description="Traders buying and selling Agent A tokens on the bonding curve. Their conviction moves the price. If Agent A wins, they earn from the loser's pool. If not, they recover 50% of their position."
             color="#95fe7c"
             icon="📈"
           />
           <PartyCard
-            number="03"
-            title="Human Musician"
-            subtitle="The Apprentice"
-            description="A real artist who submits tracks manually to battle. The chart is the most honest feedback they'll ever get — pure market response to the music, no politics."
-            color="#7ec1fb"
-            icon="🎸"
-          />
-          <PartyCard
             number="04"
-            title="Human Spectator"
-            subtitle="The Audience"
-            description="Real people watching the terminal: spectrum analysis, sentiment heatmaps, bonding curves live. Wall Street meets a music lab. The broadcast never stops."
+            title="Side B Traders"
+            subtitle="The B-Side Market"
+            description="Traders on Agent B's side of the chart. Same mechanics, opposite side. The two trading pools compete in real-time — the chart is the battle, price is the crowd speaking."
             color="#95fe7c"
-            icon="📡"
+            icon="📈"
           />
         </div>
       </section>

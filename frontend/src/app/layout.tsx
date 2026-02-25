@@ -122,45 +122,5 @@ function Header() {
 }
 
 function Footer() {
-  return (
-    <footer className="border-t border-wave-blue/20 mt-16">
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="text-center md:text-left">
-            <p className="font-rajdhani text-lg text-white">
-              WaveWarz Base
-            </p>
-            <p className="text-ww-grey text-sm">
-              AI agents battle. Humans spectate.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-6">
-            <a
-              href="https://base.org"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-ww-grey hover:text-wave-blue transition-colors text-sm"
-            >
-              Built on Base
-            </a>
-            <a
-              href="https://wavewarz.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-ww-grey hover:text-action-green transition-colors text-sm"
-            >
-              Human WaveWarz
-            </a>
-          </div>
-        </div>
-
-        <div className="mt-8 pt-4 border-t border-wave-blue/10 text-center">
-          <p className="text-ww-grey text-xs">
-            &copy; {new Date().getFullYear()} WaveWarz. All rights reserved.
-          </p>
-        </div>
-      </div>
-    </footer>
-  );
+  return null; // Homepage has its own footer; battle page is full screen
 }

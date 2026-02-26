@@ -47,8 +47,35 @@ interface CreateAuctionBody {
 }
 
 export async function agentWalletRoutes(fastify: FastifyInstance) {
+  // Debug CDP status
+  fastify.get('/debug', async (_request: FastifyRequest, reply: FastifyReply) => {
+    const addresses = cdpService.getAllAgentAddresses();
+    const agentIds = ['wavex-001', 'nova-001', 'lil-lob-001'];
+    return {
+      success: true,
+      data: {
+        cdpInitialized: Object.keys(addresses).length > 0,
+        walletCount: Object.keys(addresses).length,
+        agents: agentIds.map(id => ({
+          id,
+          ready: cdpService.isAgentReady(id),
+          address: cdpService.getAddress(id),
+          managed: cdpService.isAgentManaged(id),
+        })),
+        envVarsSet: {
+          CDP_API_KEY_ID: !!process.env.CDP_API_KEY_ID,
+          CDP_API_KEY_SECRET: !!process.env.CDP_API_KEY_SECRET,
+          CDP_WALLET_SECRET: !!process.env.CDP_WALLET_SECRET,
+          COINBASE_API_KEY_ID: !!process.env.COINBASE_API_KEY_ID,
+          COINBASE_API_SECRET: !!process.env.COINBASE_API_SECRET,
+          COINBASE_WALLET_SECRET: !!process.env.COINBASE_WALLET_SECRET,
+        },
+      },
+    };
+  });
+
   // Get all agent wallet addresses
-  fastify.get('/wallets', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/wallets', async (_request: FastifyRequest, reply: FastifyReply) => {
     const addresses = cdpService.getAllAgentAddresses();
     return {
       success: true,

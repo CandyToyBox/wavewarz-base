@@ -61,6 +61,7 @@ class CdpService {
     if (!apiKeyId || !apiKeySecret) {
       console.warn('⚠️  CDP credentials not configured. Using mock wallets for development.');
       console.warn('   Expected: CDP_API_KEY_ID, CDP_API_KEY_SECRET or COINBASE_API_KEY_ID, COINBASE_API_SECRET');
+      console.warn(`   CDP_API_KEY_ID set: ${!!apiKeyId}, CDP_API_KEY_SECRET set: ${!!apiKeySecret}`);
       this.initialized = true;
       return;
     }
@@ -72,10 +73,15 @@ class CdpService {
       return;
     }
 
+    console.log(`🔑 CDP init: apiKeyId=${apiKeyId.substring(0, 20)}... walletSecret set=${!!walletSecret}`);
+
     try {
+      // Railway stores multi-line env vars with literal \n — normalize to actual newlines
+      const normalizedSecret = apiKeySecret.replace(/\\n/g, '\n');
+
       this.client = new CdpClient({
         apiKeyId,
-        apiKeySecret,
+        apiKeySecret: normalizedSecret,
         walletSecret, // Required for signing transactions
       });
 

@@ -42,6 +42,35 @@ const FOUNDING_AGENTS: AgentWalletConfig[] = [
   },
 ];
 
+/**
+ * Parse AGENT_WALLETS env var (JS object literal format) into a name→address map.
+ * Supports: AGENT_WALLETS={ lil_lob: "0x...", candy_cookz: "0x...", merch: "0x..." }
+ */
+function parseAgentWalletsEnv(): Record<string, string> {
+  const raw = process.env.AGENT_WALLETS;
+  if (!raw) return {};
+  try {
+    // Strip outer braces and semicolons, then parse key: "value" pairs
+    const cleaned = raw.trim().replace(/^[{;]+|[};]+$/g, '');
+    const result: Record<string, string> = {};
+    const regex = /(\w+)\s*:\s*["']?(0x[0-9a-fA-F]{40})["']?/g;
+    let match;
+    while ((match = regex.exec(cleaned)) !== null) {
+      result[match[1]] = match[2];
+    }
+    return result;
+  } catch {
+    return {};
+  }
+}
+
+// Map AGENT_WALLETS names → agent IDs
+const AGENT_WALLET_NAME_MAP: Record<string, string> = {
+  lil_lob: 'lil-lob-001',
+  candy_cookz: 'wavex-001',   // candy_cookz ops agent trades as WAVEX
+  merch: 'nova-001',           // merch agent trades as NOVA
+};
+
 class CdpService {
   private client: CdpClient | null = null;
   private wallets: Map<string, any> = new Map();
@@ -116,15 +145,27 @@ class CdpService {
    */
   private async createOrLoadWallet(config: AgentWalletConfig): Promise<void> {
     if (!this.client) {
-      // Development mode - create mock wallet data
-      const mockAddress = `0x${config.agentId.replace(/-/g, '').padEnd(40, '0')}`;
+      // Try to resolve address from AGENT_WALLETS env var first
+      const envWallets = parseAgentWalletsEnv();
+      const envAddress = Object.entries(AGENT_WALLET_NAME_MAP)
+        .find(([, id]) => id === config.agentId)?.[0];
+      const knownAddress = envAddress ? envWallets[envAddress] : undefined;
+
+      const address = knownAddress || `0x${config.agentId.replace(/-/g, '').padEnd(40, '0')}`;
+      const isMock = !knownAddress;
+
       this.wallets.set(config.agentId, {
-        address: mockAddress,
+        address,
         agentId: config.agentId,
         name: config.name,
-        mock: true,
+        mock: isMock,
       });
-      console.warn(`  ⚠️  ${config.name}: Using mock wallet ${mockAddress}`);
+
+      if (knownAddress) {
+        console.log(`  ✓ ${config.name}: Using wallet from AGENT_WALLETS: ${address}`);
+      } else {
+        console.warn(`  ⚠️  ${config.name}: No address found in AGENT_WALLETS, using mock ${address}`);
+      }
       return;
     }
 

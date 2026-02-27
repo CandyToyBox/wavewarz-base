@@ -75,6 +75,54 @@ export async function agentWalletRoutes(fastify: FastifyInstance) {
     };
   });
 
+  // Test CDP transaction signing (returns raw error details without throwing)
+  fastify.post(
+    '/test-send',
+    async (
+      request: FastifyRequest<{ Body: { agentId?: string; to?: string; amount?: string } }>,
+      reply: FastifyReply
+    ) => {
+      const agentId = request.body?.agentId || 'wavex-001';
+      const to = request.body?.to || cdpService.getAddress('nova-001') || '0x0000000000000000000000000000000000000001';
+      const amount = request.body?.amount || '1'; // 1 wei
+
+      const client = cdpService.getClient();
+      if (!client) {
+        return reply.status(503).send({ success: false, error: 'CDP client not initialized' });
+      }
+
+      const address = cdpService.getAddress(agentId);
+      if (!address) {
+        return reply.status(404).send({ success: false, error: `Agent ${agentId} not found` });
+      }
+
+      try {
+        const result = await (client as any).evm.sendTransaction({
+          address: address as `0x${string}`,
+          network: 'base-sepolia',
+          transaction: {
+            to: to as `0x${string}`,
+            value: BigInt(amount),
+          },
+        });
+        return { success: true, data: { txHash: result.transactionHash, from: address, to, amount } };
+      } catch (error) {
+        const errAny = error as any;
+        return reply.status(400).send({
+          success: false,
+          error: errAny?.message || String(error),
+          details: {
+            code: errAny?.code,
+            status: errAny?.status,
+            body: errAny?.body,
+            cause: errAny?.cause?.message || errAny?.cause,
+            name: errAny?.name,
+          },
+        });
+      }
+    }
+  );
+
   // Get all agent wallet addresses
   fastify.get('/wallets', async (_request: FastifyRequest, reply: FastifyReply) => {
     const addresses = cdpService.getAllAgentAddresses();

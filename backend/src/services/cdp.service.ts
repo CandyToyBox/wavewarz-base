@@ -64,11 +64,16 @@ function parseAgentWalletsEnv(): Record<string, string> {
   }
 }
 
-// Map AGENT_WALLETS names → agent IDs
+// Map AGENT_WALLETS env var names → agent IDs
+// NOTE: AGENT_WALLETS uses OpenClaw names; CDP portal uses wavewarz- names.
+// Mapping derived from CDP portal addresses:
+//   wavewarz-wavex-001    = 0x1C07...7aDb11 = candy_cookz in AGENT_WALLETS
+//   wavewarz-nova-001     = 0xCB22...982E77 = lil_lob in AGENT_WALLETS
+//   wavewarz-lil-lob-001  = 0x2EAF...A68c30 = merch in AGENT_WALLETS
 const AGENT_WALLET_NAME_MAP: Record<string, string> = {
-  lil_lob: 'lil-lob-001',
-  candy_cookz: 'wavex-001',   // candy_cookz ops agent trades as WAVEX
-  merch: 'nova-001',           // merch agent trades as NOVA
+  candy_cookz: 'wavex-001',
+  lil_lob: 'nova-001',
+  merch: 'lil-lob-001',
 };
 
 class CdpService {
@@ -117,7 +122,10 @@ class CdpService {
       console.log('✓ CDP client initialized');
       this.initialized = true;
     } catch (error) {
-      console.error('⚠️  Failed to initialize CDP client (will use AGENT_WALLETS fallback):', error);
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error('⚠️  Failed to initialize CDP client:', msg);
+      console.error('   apiKeyId preview:', apiKeyId.substring(0, 40));
+      console.error('   secret starts with:', apiKeySecret.substring(0, 40));
       this.client = null;
       this.initialized = true; // Mark initialized so we don't retry
     }

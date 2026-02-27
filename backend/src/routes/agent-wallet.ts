@@ -55,6 +55,7 @@ export async function agentWalletRoutes(fastify: FastifyInstance) {
       success: true,
       data: {
         cdpInitialized: Object.keys(addresses).length > 0,
+        cdpClientReady: !!cdpService.getClient(), // true = can sign txs; false = read-only fallback
         walletCount: Object.keys(addresses).length,
         agents: agentIds.map(id => ({
           id,

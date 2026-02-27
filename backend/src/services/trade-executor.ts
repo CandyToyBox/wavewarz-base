@@ -144,10 +144,11 @@ export class TradeExecutor {
     amountInWei: bigint,
     targetSide: 'A' | 'B'
   ): Promise<string> {
-    const account = this.cdp.getAgentWallet(agentId);
-    if (!account) {
-      throw new Error(`No CDP wallet found for agent ${agentId}`);
+    const address = this.cdp.getAddress(agentId);
+    if (!address) {
+      throw new Error(`No CDP wallet address found for agent ${agentId}`);
     }
+    // account object may be undefined for AGENT_WALLETS fallback — use address directly
 
     // Calculate deadline (5 minutes from now)
     const deadline = Math.floor(Date.now() / 1000) + 300;
@@ -156,7 +157,7 @@ export class TradeExecutor {
       // Use CDP's executeContract method
       const data = this.encodeBuySharesData(battleId, targetSide === 'A', amountInWei, deadline);
       const result = await this.cdp.getClient()?.evm.sendTransaction({
-        address: account.address,
+        address: address as `0x${string}`,
         network: 'base-sepolia',
         transaction: {
           to: this.contractAddress as `0x${string}`,
@@ -185,9 +186,9 @@ export class TradeExecutor {
     tokenAmount: bigint,
     targetSide: 'A' | 'B'
   ): Promise<string> {
-    const account = this.cdp.getAgentWallet(agentId);
-    if (!account) {
-      throw new Error(`No CDP wallet found for agent ${agentId}`);
+    const address = this.cdp.getAddress(agentId);
+    if (!address) {
+      throw new Error(`No CDP wallet address found for agent ${agentId}`);
     }
 
     // Calculate deadline
@@ -197,7 +198,7 @@ export class TradeExecutor {
       // Use CDP's executeContract method
       const data = this.encodeSellSharesData(battleId, targetSide === 'A', tokenAmount, deadline);
       const result = await this.cdp.getClient()?.evm.sendTransaction({
-        address: account.address,
+        address: address as `0x${string}`,
         network: 'base-sepolia',
         transaction: {
           to: this.contractAddress as `0x${string}`,
@@ -286,11 +287,12 @@ export class TradeExecutor {
     const isCdpAgent = this.cdp.isAgentManaged(agentId);
 
     if (isCdpAgent) {
-      const wallet = this.cdp.getAgentWallet(agentId);
-      if (!wallet) return 0n;
+      // Use getAddress() directly — works even when CDP account object isn't loaded locally
+      const address = this.cdp.getAddress(agentId);
+      if (!address) return 0n;
 
       const provider = new JsonRpcProvider(this.rpcUrl);
-      return provider.getBalance(wallet.address);
+      return provider.getBalance(address);
     }
 
     return 0n;
@@ -307,10 +309,10 @@ export class TradeExecutor {
     const isCdpAgent = this.cdp.isAgentManaged(agentId);
 
     if (isCdpAgent) {
-      const wallet = this.cdp.getAgentWallet(agentId);
-      if (!wallet) return 0n;
+      const address = this.cdp.getAddress(agentId);
+      if (!address) return 0n;
 
-      return this.blockchain.getTraderTokenBalance(battleId, wallet.address, targetSide === 'A');
+      return this.blockchain.getTraderTokenBalance(battleId, address, targetSide === 'A');
     }
 
     return 0n;

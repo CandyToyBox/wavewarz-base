@@ -241,6 +241,7 @@ export class AgentTradingEngine {
       // Fetch current balance and tokens
       const balance = await this.tradeExecutor.getAgentBalance(agentId);
       const tokensHeld = await this.tradeExecutor.getAgentTokenBalance(battleId, agentId, agentSide);
+      console.log(`💰 Agent ${agentId} (Side ${agentSide}): balance=${balance.toString()} wei, tokens=${tokensHeld.toString()}`);
 
       // Complete the context
       const fullContext: BattleContext = {
@@ -268,6 +269,7 @@ export class AgentTradingEngine {
 
       // Get trade decision
       const decision = strategy.decide(fullContext);
+      console.log(`🧠 Decision for ${agentId}: shouldTrade=${decision.shouldTrade}, type=${decision.tradeType}, amount=${decision.amount}, reason=${decision.reason}`);
 
       // Log the decision
       await this.logTradeDecision(battleId, agentId, decision);

@@ -81,7 +81,7 @@ export async function loadSecretsFromVault(): Promise<void> {
 
   const client = new Client({
     connectionString: databaseUrl,
-    ssl: { rejectUnauthorized: false }, // Required for Supabase
+    ssl: { rejectUnauthorized: false },
   });
 
   try {

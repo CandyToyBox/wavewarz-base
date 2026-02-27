@@ -63,13 +63,18 @@ export async function agentWalletRoutes(fastify: FastifyInstance) {
           address: cdpService.getAddress(id),
           managed: cdpService.isAgentManaged(id),
         })),
+        signingWallets: {
+          'wavex-001': !!process.env.WAVEX_PRIVATE_KEY,
+          'nova-001': !!process.env.NOVA_PRIVATE_KEY,
+          'lil-lob-001': !!process.env.LIL_LOB_PRIVATE_KEY,
+        },
         envVarsSet: {
           CDP_API_KEY_ID: !!process.env.CDP_API_KEY_ID,
           CDP_API_KEY_SECRET: !!process.env.CDP_API_KEY_SECRET,
           CDP_WALLET_SECRET: !!process.env.CDP_WALLET_SECRET,
-          COINBASE_API_KEY_ID: !!process.env.COINBASE_API_KEY_ID,
-          COINBASE_API_SECRET: !!process.env.COINBASE_API_SECRET,
-          COINBASE_WALLET_SECRET: !!process.env.COINBASE_WALLET_SECRET,
+          WAVEX_PRIVATE_KEY: !!process.env.WAVEX_PRIVATE_KEY,
+          NOVA_PRIVATE_KEY: !!process.env.NOVA_PRIVATE_KEY,
+          LIL_LOB_PRIVATE_KEY: !!process.env.LIL_LOB_PRIVATE_KEY,
         },
       },
     };

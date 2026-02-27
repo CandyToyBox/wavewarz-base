@@ -1,7 +1,12 @@
 /**
  * Trade Executor
- * Handles signing and executing trades on-chain via agent wallets
- * Supports CDP wallets for WAVEX/NOVA and external agent wallets
+ * Handles signing and executing trades on-chain via agent wallets.
+ * Uses direct ethers.js signing with private keys (env vars) — no CDP MPC dependency.
+ *
+ * Required env vars for each agent:
+ *   WAVEX_PRIVATE_KEY  — private key for wavex-001
+ *   NOVA_PRIVATE_KEY   — private key for nova-001
+ *   LIL_LOB_PRIVATE_KEY — private key for lil-lob-001
  */
 
 import { Wallet, JsonRpcProvider, ethers } from 'ethers';
@@ -27,12 +32,23 @@ export interface TradeExecutionResult {
   details?: string;
 }
 
+// Map agentId → env var name for private key
+const AGENT_KEY_ENV: Record<string, string> = {
+  'wavex-001':   'WAVEX_PRIVATE_KEY',
+  'nova-001':    'NOVA_PRIVATE_KEY',
+  'lil-lob-001': 'LIL_LOB_PRIVATE_KEY',
+};
+
 export class TradeExecutor {
   private pool: Pool;
   private blockchain: BlockchainService;
   private cdp: CdpService;
   private rpcUrl: string;
   private contractAddress: string;
+  private provider: JsonRpcProvider;
+
+  // Cache of ethers.Wallet instances keyed by agentId
+  private wallets: Map<string, Wallet> = new Map();
 
   constructor(
     databaseUrl: string,
@@ -49,10 +65,34 @@ export class TradeExecutor {
     this.cdp = cdp;
     this.rpcUrl = rpcUrl;
     this.contractAddress = contractAddress;
+    this.provider = new JsonRpcProvider(rpcUrl);
+
+    // Pre-load wallets from env vars
+    for (const [agentId, envKey] of Object.entries(AGENT_KEY_ENV)) {
+      const pk = process.env[envKey];
+      if (pk) {
+        try {
+          const wallet = new Wallet(pk, this.provider);
+          this.wallets.set(agentId, wallet);
+          console.log(`✓ Loaded signing wallet for ${agentId}: ${wallet.address}`);
+        } catch (e) {
+          console.error(`✗ Invalid private key for ${agentId} (${envKey}):`, e);
+        }
+      } else {
+        console.warn(`⚠️  No private key for ${agentId} — set ${envKey} env var to enable trading`);
+      }
+    }
   }
 
   /**
-   * Execute a buy trade (needs to send ETH along with transaction)
+   * Get the ethers.Wallet for an agent, or null if not configured.
+   */
+  private getWallet(agentId: string): Wallet | null {
+    return this.wallets.get(agentId) ?? null;
+  }
+
+  /**
+   * Execute a buy trade (sends ETH with the transaction)
    */
   async executeBuyTrade(
     battleId: number,
@@ -61,37 +101,21 @@ export class TradeExecutor {
     targetSide: 'A' | 'B'
   ): Promise<TradeExecutionResult> {
     try {
-      // Check if agent is CDP-managed (WAVEX/NOVA)
-      const isCdpAgent = this.cdp.isAgentManaged(agentId);
-
-      let txHash: string;
-
-      if (isCdpAgent) {
-        txHash = await this.executeCdpBuyTrade(battleId, agentId, amountInWei, targetSide);
-      } else {
-        // For external agents, we would prepare the transaction
-        // and expect the agent to sign it themselves
-        // For now, return an error since we can't sign for external wallets
+      const wallet = this.getWallet(agentId);
+      if (!wallet) {
         return {
           success: false,
-          error: 'External agent wallets must sign transactions themselves',
+          error: `No signing wallet configured for ${agentId}. Set ${AGENT_KEY_ENV[agentId] ?? 'AGENT_PRIVATE_KEY'} env var.`,
         };
       }
 
-      // Log the trade
+      const txHash = await this.executeDirectBuy(wallet, battleId, amountInWei, targetSide);
       await this.logTrade(battleId, agentId, 'buy', targetSide, amountInWei.toString(), txHash);
 
-      return {
-        success: true,
-        txHash,
-      };
+      return { success: true, txHash };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      return {
-        success: false,
-        error: errorMsg,
-        details: 'Buy trade execution failed',
-      };
+      return { success: false, error: errorMsg, details: 'Buy trade execution failed' };
     }
   }
 
@@ -105,161 +129,124 @@ export class TradeExecutor {
     targetSide: 'A' | 'B'
   ): Promise<TradeExecutionResult> {
     try {
-      const isCdpAgent = this.cdp.isAgentManaged(agentId);
-
-      let txHash: string;
-
-      if (isCdpAgent) {
-        txHash = await this.executeCdpSellTrade(battleId, agentId, tokenAmount, targetSide);
-      } else {
+      const wallet = this.getWallet(agentId);
+      if (!wallet) {
         return {
           success: false,
-          error: 'External agent wallets must sign transactions themselves',
+          error: `No signing wallet configured for ${agentId}. Set ${AGENT_KEY_ENV[agentId] ?? 'AGENT_PRIVATE_KEY'} env var.`,
         };
       }
 
-      // Log the trade
+      const txHash = await this.executeDirectSell(wallet, battleId, tokenAmount, targetSide);
       await this.logTrade(battleId, agentId, 'sell', targetSide, tokenAmount.toString(), txHash);
 
-      return {
-        success: true,
-        txHash,
-      };
+      return { success: true, txHash };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      return {
-        success: false,
-        error: errorMsg,
-        details: 'Sell trade execution failed',
-      };
+      return { success: false, error: errorMsg, details: 'Sell trade execution failed' };
     }
   }
 
   /**
-   * Execute buy trade via CDP (for WAVEX/NOVA agents)
+   * Sign and broadcast a buyShares transaction directly via ethers.js
    */
-  private async executeCdpBuyTrade(
+  private async executeDirectBuy(
+    wallet: Wallet,
     battleId: number,
-    agentId: string,
     amountInWei: bigint,
     targetSide: 'A' | 'B'
   ): Promise<string> {
-    const address = this.cdp.getAddress(agentId);
-    if (!address) {
-      throw new Error(`No CDP wallet address found for agent ${agentId}`);
-    }
-    // account object may be undefined for AGENT_WALLETS fallback — use address directly
-
-    // Calculate deadline (5 minutes from now)
     const deadline = Math.floor(Date.now() / 1000) + 300;
-
-    try {
-      // Use CDP's executeContract method
-      const data = this.encodeBuySharesData(battleId, targetSide === 'A', amountInWei, deadline);
-      const result = await this.cdp.getClient()?.evm.sendTransaction({
-        address: address as `0x${string}`,
-        network: 'base-sepolia',
-        transaction: {
-          to: this.contractAddress as `0x${string}`,
-          value: amountInWei,
-          data: data as `0x${string}`,
-        },
-      });
-
-      if (!result) {
-        throw new Error('Failed to execute trade');
-      }
-
-      return result.transactionHash;
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      throw new Error(`CDP buy trade failed: ${errorMsg}`);
-    }
-  }
-
-  /**
-   * Execute sell trade via CDP (for WAVEX/NOVA agents)
-   */
-  private async executeCdpSellTrade(
-    battleId: number,
-    agentId: string,
-    tokenAmount: bigint,
-    targetSide: 'A' | 'B'
-  ): Promise<string> {
-    const address = this.cdp.getAddress(agentId);
-    if (!address) {
-      throw new Error(`No CDP wallet address found for agent ${agentId}`);
-    }
-
-    // Calculate deadline
-    const deadline = Math.floor(Date.now() / 1000) + 300;
-
-    try {
-      // Use CDP's executeContract method
-      const data = this.encodeSellSharesData(battleId, targetSide === 'A', tokenAmount, deadline);
-      const result = await this.cdp.getClient()?.evm.sendTransaction({
-        address: address as `0x${string}`,
-        network: 'base-sepolia',
-        transaction: {
-          to: this.contractAddress as `0x${string}`,
-          value: 0n,
-          data: data as `0x${string}`,
-        },
-      });
-
-      if (!result) {
-        throw new Error('Failed to execute trade');
-      }
-
-      return result.transactionHash;
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      throw new Error(`CDP sell trade failed: ${errorMsg}`);
-    }
-  }
-
-  /**
-   * Encode buyShares function call data
-   */
-  private encodeBuySharesData(
-    battleId: number,
-    artistA: boolean,
-    amount: bigint,
-    deadline: number
-  ): string {
     const iface = new ethers.Interface([
       'function buyShares(uint64 battleId, bool artistA, uint256 amount, uint256 minTokensOut, uint64 deadline) payable returns (uint256)',
     ]);
-
-    return iface.encodeFunctionData('buyShares', [
+    const data = iface.encodeFunctionData('buyShares', [
       battleId,
-      artistA,
-      amount,
-      0n, // minTokensOut = 0 (no slippage protection)
+      targetSide === 'A',
+      amountInWei,
+      0n,
       deadline,
     ]);
+
+    const tx = await wallet.sendTransaction({
+      to: this.contractAddress,
+      value: amountInWei,
+      data,
+    });
+
+    console.log(`📤 Buy tx sent: ${tx.hash} (battleId=${battleId}, side=${targetSide}, amount=${amountInWei})`);
+    return tx.hash;
   }
 
   /**
-   * Encode sellShares function call data
+   * Sign and broadcast a sellShares transaction directly via ethers.js
    */
-  private encodeSellSharesData(
+  private async executeDirectSell(
+    wallet: Wallet,
     battleId: number,
-    artistA: boolean,
     tokenAmount: bigint,
-    deadline: number
-  ): string {
+    targetSide: 'A' | 'B'
+  ): Promise<string> {
+    const deadline = Math.floor(Date.now() / 1000) + 300;
     const iface = new ethers.Interface([
       'function sellShares(uint64 battleId, bool artistA, uint256 tokenAmount, uint256 minAmountOut, uint64 deadline) returns (uint256)',
     ]);
-
-    return iface.encodeFunctionData('sellShares', [
+    const data = iface.encodeFunctionData('sellShares', [
       battleId,
-      artistA,
+      targetSide === 'A',
       tokenAmount,
-      0n, // minAmountOut = 0 (no slippage protection)
+      0n,
       deadline,
     ]);
+
+    const tx = await wallet.sendTransaction({
+      to: this.contractAddress,
+      value: 0n,
+      data,
+    });
+
+    console.log(`📤 Sell tx sent: ${tx.hash} (battleId=${battleId}, side=${targetSide}, tokens=${tokenAmount})`);
+    return tx.hash;
+  }
+
+  /**
+   * Get agent's current ETH balance.
+   * Checks private-key wallet first, then falls back to CDP address.
+   */
+  async getAgentBalance(agentId: string): Promise<bigint> {
+    // Prefer the locally-loaded signing wallet address
+    const wallet = this.wallets.get(agentId);
+    if (wallet) {
+      return this.provider.getBalance(wallet.address);
+    }
+
+    // Fallback: use address from CDP service (read-only)
+    const address = this.cdp.getAddress(agentId);
+    if (address) {
+      return this.provider.getBalance(address);
+    }
+
+    return 0n;
+  }
+
+  /**
+   * Get the address for an agent (used for display/logging)
+   */
+  getAgentAddress(agentId: string): string | undefined {
+    return this.wallets.get(agentId)?.address ?? this.cdp.getAddress(agentId);
+  }
+
+  /**
+   * Get agent's token balance for a specific battle side
+   */
+  async getAgentTokenBalance(
+    battleId: number,
+    agentId: string,
+    targetSide: 'A' | 'B'
+  ): Promise<bigint> {
+    const address = this.getAgentAddress(agentId);
+    if (!address) return 0n;
+    return this.blockchain.getTraderTokenBalance(battleId, address, targetSide === 'A');
   }
 
   /**
@@ -273,48 +260,15 @@ export class TradeExecutor {
     amount: string,
     txHash: string
   ): Promise<void> {
-    await this.pool.query(
-      `INSERT INTO agent_trades (battle_id, agent_id, trade_type, target_side, amount, tx_hash)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [battleId, agentId, tradeType, targetSide, amount, txHash]
-    );
-  }
-
-  /**
-   * Get agent's current balance
-   */
-  async getAgentBalance(agentId: string): Promise<bigint> {
-    const isCdpAgent = this.cdp.isAgentManaged(agentId);
-
-    if (isCdpAgent) {
-      // Use getAddress() directly — works even when CDP account object isn't loaded locally
-      const address = this.cdp.getAddress(agentId);
-      if (!address) return 0n;
-
-      const provider = new JsonRpcProvider(this.rpcUrl);
-      return provider.getBalance(address);
+    try {
+      await this.pool.query(
+        `INSERT INTO agent_trades (battle_id, agent_id, trade_type, target_side, amount, tx_hash)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [battleId, agentId, tradeType, targetSide, amount, txHash]
+      );
+    } catch (e) {
+      // Non-fatal: log warning but don't fail the trade
+      console.warn(`⚠️  Failed to log trade to DB:`, e);
     }
-
-    return 0n;
-  }
-
-  /**
-   * Get agent's token balance for a specific battle side
-   */
-  async getAgentTokenBalance(
-    battleId: number,
-    agentId: string,
-    targetSide: 'A' | 'B'
-  ): Promise<bigint> {
-    const isCdpAgent = this.cdp.isAgentManaged(agentId);
-
-    if (isCdpAgent) {
-      const address = this.cdp.getAddress(agentId);
-      if (!address) return 0n;
-
-      return this.blockchain.getTraderTokenBalance(battleId, address, targetSide === 'A');
-    }
-
-    return 0n;
   }
 }

@@ -76,6 +76,7 @@ const AGENT_WALLET_NAME_MAP: Record<string, string> = {
   merch: 'lil-lob-001',
 };
 
+
 class CdpService {
   private client: CdpClient | null = null;
   private wallets: Map<string, any> = new Map();
@@ -302,7 +303,10 @@ class CdpService {
 
       return { txHash: result.transactionHash };
     } catch (error) {
-      console.error(`Failed to send ETH from ${agentId}:`, error);
+      const errAny = error as any;
+      console.error(`Failed to send ETH from ${agentId}:`, {
+        message: errAny?.message, code: errAny?.code, status: errAny?.status, body: errAny?.body
+      });
       throw error;
     }
   }
@@ -346,7 +350,16 @@ class CdpService {
 
       return { txHash: result.transactionHash };
     } catch (error) {
-      console.error(`Failed to execute contract from ${agentId}:`, error);
+      // Log full error details for debugging
+      const errAny = error as any;
+      console.error(`Failed to execute contract from ${agentId}:`, {
+        message: errAny?.message,
+        code: errAny?.code,
+        status: errAny?.status,
+        body: errAny?.body,
+        cause: errAny?.cause,
+        stack: errAny?.stack?.split('\n').slice(0,3).join(' | '),
+      });
       throw error;
     }
   }

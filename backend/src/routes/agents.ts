@@ -308,4 +308,18 @@ export const agentsRoutes: FastifyPluginAsync<{
       return reply.status(500).send({ success: false, error: 'Failed to prepare transaction' });
     }
   });
+
+  // Admin: reset agent battle state (clears in_active_battle flag)
+  fastify.post('/:id/reset', async (request, reply) => {
+    const params = AgentIdParamsSchema.safeParse(request.params);
+    if (!params.success) return reply.status(400).send({ success: false, error: 'Invalid agent ID' });
+
+    try {
+      await agentService.setActiveBattle(params.data.id, null);
+      return { success: true, message: `Agent ${params.data.id} reset` };
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.status(500).send({ success: false, error: 'Reset failed' });
+    }
+  });
 };

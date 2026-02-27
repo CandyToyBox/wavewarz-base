@@ -117,8 +117,9 @@ class CdpService {
       console.log('✓ CDP client initialized');
       this.initialized = true;
     } catch (error) {
-      console.error('Failed to initialize CDP client:', error);
-      throw error;
+      console.error('⚠️  Failed to initialize CDP client (will use AGENT_WALLETS fallback):', error);
+      this.client = null;
+      this.initialized = true; // Mark initialized so we don't retry
     }
   }
 
@@ -182,9 +183,28 @@ class CdpService {
         agentId: config.agentId,
         name: config.name,
       });
+      console.log(`  ✓ ${config.name}: CDP wallet ${account.address}`);
     } catch (error) {
-      console.error(`Failed to create account for ${config.name}:`, error);
-      throw error;
+      console.error(`✗ CDP account load failed for ${config.name}:`, error);
+      // Fall back to AGENT_WALLETS env var
+      const envWallets = parseAgentWalletsEnv();
+      const envName = Object.entries(AGENT_WALLET_NAME_MAP)
+        .find(([, id]) => id === config.agentId)?.[0];
+      const knownAddress = envName ? envWallets[envName] : undefined;
+      const address = knownAddress || `0x${config.agentId.replace(/-/g, '').padEnd(40, '0')}`;
+
+      this.wallets.set(config.agentId, {
+        address,
+        agentId: config.agentId,
+        name: config.name,
+        mock: !knownAddress,
+      });
+
+      if (knownAddress) {
+        console.log(`  ↩ ${config.name}: Fell back to AGENT_WALLETS address ${address}`);
+      } else {
+        console.warn(`  ⚠️  ${config.name}: No AGENT_WALLETS entry, using mock ${address}`);
+      }
     }
   }
 

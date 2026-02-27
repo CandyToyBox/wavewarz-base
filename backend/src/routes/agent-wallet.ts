@@ -112,11 +112,16 @@ export async function agentWalletRoutes(fastify: FastifyInstance) {
           success: false,
           error: errAny?.message || String(error),
           details: {
+            name: errAny?.name,
+            statusCode: errAny?.statusCode,
+            errorType: errAny?.errorType,
+            errorMessage: errAny?.errorMessage,
+            correlationId: errAny?.correlationId,
+            errorLink: errAny?.errorLink,
             code: errAny?.code,
             status: errAny?.status,
             body: errAny?.body,
             cause: errAny?.cause?.message || errAny?.cause,
-            name: errAny?.name,
           },
         });
       }

@@ -129,7 +129,14 @@ export class AgentTradingEngine {
    * Main monitoring cycle - runs periodically
    */
   private async runMonitoringCycle(): Promise<void> {
-    if (!this.monitoringLoopRunning || this.activeBattles.size === 0) {
+    if (!this.monitoringLoopRunning) {
+      return;
+    }
+
+    // Reload active battles every cycle so new battles created after startup are picked up
+    await this.loadActiveBattles();
+
+    if (this.activeBattles.size === 0) {
       return;
     }
 

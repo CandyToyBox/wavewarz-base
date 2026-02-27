@@ -108,21 +108,17 @@ export async function agentWalletRoutes(fastify: FastifyInstance) {
         return { success: true, data: { txHash: result.transactionHash, from: address, to, amount } };
       } catch (error) {
         const errAny = error as any;
+        // Capture all enumerable + known properties from the error
+        const errDetails: any = { name: errAny?.name };
+        for (const key of ['statusCode','errorType','errorMessage','correlationId','errorLink','code','status','body']) {
+          if (errAny?.[key] !== undefined) errDetails[key] = errAny[key];
+        }
+        if (errAny?.cause) errDetails.cause = errAny.cause?.message || String(errAny.cause);
+        try { errDetails._json = errAny?.toJSON?.(); } catch {}
         return reply.status(400).send({
           success: false,
           error: errAny?.message || String(error),
-          details: {
-            name: errAny?.name,
-            statusCode: errAny?.statusCode,
-            errorType: errAny?.errorType,
-            errorMessage: errAny?.errorMessage,
-            correlationId: errAny?.correlationId,
-            errorLink: errAny?.errorLink,
-            code: errAny?.code,
-            status: errAny?.status,
-            body: errAny?.body,
-            cause: errAny?.cause?.message || errAny?.cause,
-          },
+          details: errDetails,
         });
       }
     }

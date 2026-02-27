@@ -5,12 +5,32 @@
 
 import type { FastifyInstance } from 'fastify';
 import type { AgentTradingEngine } from '../services/agent-trading-engine.js';
+import type { TradeExecutor } from '../services/trade-executor.js';
 
 export async function agentTradingRoutes(
   fastify: FastifyInstance,
-  options: { agentTradingEngine: AgentTradingEngine }
+  options: { agentTradingEngine: AgentTradingEngine; tradeExecutor?: TradeExecutor }
 ) {
-  const { agentTradingEngine } = options;
+  const { agentTradingEngine, tradeExecutor } = options;
+
+  /**
+   * GET /api/trading/debug-balance/:agentId
+   * Debug: check agent's ETH balance via TradeExecutor
+   */
+  fastify.get<{ Params: { agentId: string } }>('/debug-balance/:agentId', async (request, reply) => {
+    if (!tradeExecutor) {
+      return reply.status(503).send({ success: false, error: 'TradeExecutor not available' });
+    }
+    try {
+      const balance = await tradeExecutor.getAgentBalance(request.params.agentId);
+      return reply.send({
+        success: true,
+        data: { agentId: request.params.agentId, balanceWei: balance.toString(), balanceEth: (Number(balance) / 1e18).toFixed(6) }
+      });
+    } catch (err) {
+      return reply.status(500).send({ success: false, error: String(err) });
+    }
+  });
 
   /**
    * GET /api/trading/status

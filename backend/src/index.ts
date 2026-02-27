@@ -223,6 +223,7 @@ async function start() {
   await fastify.register(agentTradingRoutes, {
     prefix: '/api/trading',
     agentTradingEngine,
+    tradeExecutor,
   });
 
   // Wallet funding routes (auto-fund agents with testnet ETH)

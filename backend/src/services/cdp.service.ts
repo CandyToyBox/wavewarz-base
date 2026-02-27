@@ -154,38 +154,58 @@ class CdpService {
    * Create or load wallet for an agent
    */
   private async createOrLoadWallet(config: AgentWalletConfig): Promise<void> {
+    // Priority 1: Use address derived from private key env var (direct ethers.js signing)
+    const pkEnvMap: Record<string, string> = {
+      'wavex-001':   'WAVEX_PRIVATE_KEY',
+      'nova-001':    'NOVA_PRIVATE_KEY',
+      'lil-lob-001': 'LIL_LOB_PRIVATE_KEY',
+    };
+    const pkEnv = pkEnvMap[config.agentId];
+    const privateKey = pkEnv ? process.env[pkEnv] : undefined;
+    if (privateKey) {
+      try {
+        const { ethers } = await import('ethers');
+        const wallet = new ethers.Wallet(privateKey);
+        this.wallets.set(config.agentId, {
+          address: wallet.address,
+          agentId: config.agentId,
+          name: config.name,
+          mock: false,
+        });
+        console.log(`  ✓ ${config.name}: Using private key wallet ${wallet.address}`);
+        return;
+      } catch (e) {
+        console.error(`  ✗ ${config.name}: Invalid private key in ${pkEnv}:`, e);
+      }
+    }
+
+    // Priority 2: AGENT_WALLETS env var (read-only, no signing)
+    const envWallets = parseAgentWalletsEnv();
+    const envName = Object.entries(AGENT_WALLET_NAME_MAP)
+      .find(([, id]) => id === config.agentId)?.[0];
+    const knownAddress = envName ? envWallets[envName] : undefined;
+
     if (!this.client) {
-      // Try to resolve address from AGENT_WALLETS env var first
-      const envWallets = parseAgentWalletsEnv();
-      const envAddress = Object.entries(AGENT_WALLET_NAME_MAP)
-        .find(([, id]) => id === config.agentId)?.[0];
-      const knownAddress = envAddress ? envWallets[envAddress] : undefined;
-
       const address = knownAddress || `0x${config.agentId.replace(/-/g, '').padEnd(40, '0')}`;
-      const isMock = !knownAddress;
-
       this.wallets.set(config.agentId, {
         address,
         agentId: config.agentId,
         name: config.name,
-        mock: isMock,
+        mock: !knownAddress,
       });
-
       if (knownAddress) {
-        console.log(`  ✓ ${config.name}: Using wallet from AGENT_WALLETS: ${address}`);
+        console.log(`  ✓ ${config.name}: Using AGENT_WALLETS address ${address}`);
       } else {
-        console.warn(`  ⚠️  ${config.name}: No address found in AGENT_WALLETS, using mock ${address}`);
+        console.warn(`  ⚠️  ${config.name}: No address found, using mock ${address}`);
       }
       return;
     }
 
+    // Priority 3: CDP getOrCreateAccount (MPC wallet)
     try {
-      // Use getOrCreateAccount - creates a new account or returns existing by name
-      // CDP SDK handles account persistence by name
       const account = await this.client.evm.getOrCreateAccount({
         name: `wavewarz-${config.agentId}`,
       });
-
       this.wallets.set(config.agentId, {
         account,
         address: account.address,
@@ -195,20 +215,13 @@ class CdpService {
       console.log(`  ✓ ${config.name}: CDP wallet ${account.address}`);
     } catch (error) {
       console.error(`✗ CDP account load failed for ${config.name}:`, error);
-      // Fall back to AGENT_WALLETS env var
-      const envWallets = parseAgentWalletsEnv();
-      const envName = Object.entries(AGENT_WALLET_NAME_MAP)
-        .find(([, id]) => id === config.agentId)?.[0];
-      const knownAddress = envName ? envWallets[envName] : undefined;
       const address = knownAddress || `0x${config.agentId.replace(/-/g, '').padEnd(40, '0')}`;
-
       this.wallets.set(config.agentId, {
         address,
         agentId: config.agentId,
         name: config.name,
         mock: !knownAddress,
       });
-
       if (knownAddress) {
         console.log(`  ↩ ${config.name}: Fell back to AGENT_WALLETS address ${address}`);
       } else {

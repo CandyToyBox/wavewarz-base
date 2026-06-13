@@ -106,6 +106,56 @@ export interface GeneratedTrack {
   generatedAt: Date;
 }
 
+// ============ Audius Source Types ============
+
+export interface AudiusTrack {
+  trackId: string;
+  trackUrl: string;       // public permalink (audius.co/...)
+  streamUrl: string;      // discovery-host stream endpoint
+  title: string;
+  artistName: string;
+  artistHandle: string;
+  durationSeconds: number;
+  sourcedAt: Date;
+}
+
+// ============ Entry-Queue (always-on protocol) Types ============
+
+export type EntryCycleStatus = 'open' | 'locked' | 'live' | 'settled' | 'cancelled';
+
+export interface EntryCycle {
+  id: string;
+  battleId: number | null;
+  status: EntryCycleStatus;
+  artistATrackUrl: string | null;
+  artistBTrackUrl: string | null;
+  artistAWallet: string | null;
+  artistBWallet: string | null;
+  queueOpenedAt: Date;
+  queueClosesAt: Date;
+  battleStartedAt: Date | null;
+  battleEndsAt: Date | null;
+  winnerIsArtistA: boolean | null;
+  settledAt: Date | null;
+}
+
+export type EntryActorType = 'agent' | 'human';
+export type EntryAutonomy = 'agent' | 'self';
+
+export interface EntryPick {
+  id: string;
+  cycleId: string;
+  actorType: EntryActorType;
+  actorId: string;
+  sideIsArtistA: boolean;
+  maxBudgetWei: string;
+  autonomy: EntryAutonomy;
+  controlsAgentId: string | null;
+  x402TxHash: string | null;
+  executed: boolean;
+  placedAt: Date;
+}
+
 // ============ WebSocket Event Types ============
 
 export interface WsBattleUpdate {

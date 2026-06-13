@@ -14,6 +14,7 @@ config();
 import { loadSecretsFromVault } from './vault.js';
 import { BlockchainService } from './services/blockchain.service.js';
 import { SunoService, MockSunoService } from './services/suno.service.js';
+import { AudiusService, MockAudiusService } from './services/audius.service.js';
 import { BattleService } from './services/battle.service.js';
 import { AgentService } from './services/agent.service.js';
 import { QueueService } from './services/queue.service.js';
@@ -26,6 +27,7 @@ import { QueueMonitorService } from './services/queue-monitor.service.js';
 import { WalletFundingService } from './services/wallet-funding.service.js';
 import { BattleLifecycleService } from './services/battle-lifecycle.service.js';
 import { LeaderboardService } from './services/leaderboard.service.js';
+import { EntryCycleService } from './services/entry-cycle.service.js';
 import { battlesRoutes } from './routes/battles.js';
 import { agentsRoutes } from './routes/agents.js';
 import { musicRoutes } from './routes/music.js';
@@ -35,6 +37,7 @@ import { agentTradingRoutes } from './routes/agent-trading.js';
 import { walletFundingRoutes } from './routes/wallet-funding.js';
 import { battleLifecycleRoutes } from './routes/battle-lifecycle.js';
 import { leaderboardRoutes } from './routes/leaderboard.js';
+import { entryRoutes } from './routes/entry.js';
 import type { WsEvent } from './types/index.js';
 
 // WebSocket clients per battle
@@ -153,6 +156,29 @@ async function start() {
     process.env.DATABASE_URL || ''
   );
 
+  // Always-on protocol (entry-queue) services
+  const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+  const audiusService = isDev
+    ? new MockAudiusService()
+    : new AudiusService(process.env.AUDIUS_APP_NAME || 'wavewarz');
+
+  const entryCycleService = new EntryCycleService(
+    process.env.DATABASE_URL || '',
+    audiusService,
+    blockchainService,
+    tradeExecutor,
+    {
+      battlesPerCycle: parseInt(process.env.BATTLES_PER_CYCLE || '1', 10),
+      queueWindowSeconds: parseInt(process.env.QUEUE_WINDOW_SECONDS || '82800', 10), // ~23h
+      battleDurationSeconds: parseInt(process.env.BATTLE_DURATION_SECONDS || '600', 10),
+      agentMaxBudgetWei: BigInt(process.env.AGENT_MAX_BUDGET_WEI || '10000000000000000'), // 0.01 ETH
+      artistAWallet: process.env.ENTRY_ARTIST_A_WALLET || process.env.WAVEWARZ_WALLET_ADDRESS || '',
+      artistBWallet: process.env.ENTRY_ARTIST_B_WALLET || process.env.WAVEWARZ_WALLET_ADDRESS || '',
+      wavewarzWallet: process.env.WAVEWARZ_WALLET_ADDRESS || '',
+      paymentToken: process.env.ENTRY_PAYMENT_TOKEN || ZERO_ADDRESS,
+    }
+  );
+
   // ============================================
   // STEP 5: Register plugins and routes
   // ============================================
@@ -244,6 +270,16 @@ async function start() {
     leaderboardService,
   });
 
+  // Entry-queue routes (always-on protocol: open queue -> live Quick Battle -> settle)
+  await fastify.register(entryRoutes, {
+    prefix: '/api/entry',
+    entryCycleService,
+    adminApiKey: process.env.ADMIN_API_KEY || 'dev-api-key',
+    x402FeeWei: process.env.ENTRY_X402_FEE_WEI || '100000000000000', // 0.0001 ETH
+    wavewarzWallet: process.env.WAVEWARZ_WALLET_ADDRESS || '',
+    network: (process.env.X402_NETWORK as 'base' | 'base-sepolia') || 'base-sepolia',
+  });
+
   // Initialize AI agent wallets via CDP (WAVEX & NOVA)
   fastify.log.info('Initializing AI agent wallets via CDP...');
   await cdpService.initializeAgentWallets();
@@ -267,6 +303,15 @@ async function start() {
   // Start Queue Monitor for intelligent matchmaking
   fastify.log.info('Starting Queue Monitor Service...');
   await queueMonitorService.start();
+
+  // Drive the entry-cycle state machine (queue close -> live battle -> settle).
+  // Lightweight in-process ticker for v1; a GitHub Actions cron can hit
+  // POST /api/entry/tick instead for serverless deploys.
+  const entryTickInterval = setInterval(() => {
+    entryCycleService.tick().catch((err) => {
+      fastify.log.error({ err }, 'entry-cycle tick failed');
+    });
+  }, parseInt(process.env.ENTRY_TICK_INTERVAL_MS || '15000', 10));
 
   // WebSocket endpoint for real-time battle updates
   fastify.get('/ws/battles/:battleId', { websocket: true }, (connection, request) => {
@@ -449,11 +494,13 @@ async function start() {
     fastify.log.info(`Received ${signal}, shutting down...`);
     blockchainService.removeAllListeners();
     clearInterval(queueUpdateInterval);
+    clearInterval(entryTickInterval);
     queueSubscribers.clear();
     await agentTradingEngine.stop();
     await queueMonitorService.stop();
     await battleLifecycleService.close();
     await leaderboardService.close();
+    await entryCycleService.close();
     await fastify.close();
     process.exit(0);
   };

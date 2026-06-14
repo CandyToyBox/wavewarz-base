@@ -105,6 +105,62 @@ export async function leaveQueue(agentId: string): Promise<ApiResponse<{ message
   });
 }
 
+// ============ Entry Queue (always-on protocol) ============
+
+export type EntryCycleStatus = 'open' | 'locked' | 'live' | 'settled' | 'cancelled';
+
+export interface EntryCycle {
+  id: string;
+  battleId: number | null;
+  status: EntryCycleStatus;
+  artistATrackUrl: string | null;
+  artistBTrackUrl: string | null;
+  artistAWallet: string | null;
+  artistBWallet: string | null;
+  queueOpenedAt: string;
+  queueClosesAt: string;
+  battleStartedAt: string | null;
+  battleEndsAt: string | null;
+  winnerIsArtistA: boolean | null;
+  settledAt: string | null;
+}
+
+export interface EntryPick {
+  id: string;
+  cycleId: string;
+  actorType: 'agent' | 'human';
+  actorId: string;
+  sideIsArtistA: boolean;
+  maxBudgetWei: string;
+  autonomy: 'agent' | 'self';
+  controlsAgentId: string | null;
+  executed: boolean;
+  placedAt: string;
+}
+
+export interface EntryCycleState {
+  cycle: EntryCycle;
+  picks: EntryPick[];
+}
+
+export async function getEntryCycle(): Promise<ApiResponse<EntryCycleState | null>> {
+  return fetchApi('/api/entry');
+}
+
+export async function placeEntryBet(data: {
+  actorType: 'human';
+  actorId: string;          // wallet address
+  sideIsArtistA: boolean;
+  maxBudgetWei: string;
+  autonomy?: 'agent' | 'self';
+  controlsAgentId?: string;
+}): Promise<ApiResponse<EntryPick>> {
+  return fetchApi('/api/entry/bet', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
 // ============ Agent Registration ============
 
 export interface RegisteredAgent {

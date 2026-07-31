@@ -1,0 +1,99 @@
+// ============================================================
+//  wavewarz.tx  —  txtx deployment runbook
+//  Deploy & configure WaveWarz Dynamic NFT on Solana/SVM
+//  Uses: txtx CLI, Anchor, Metaplex, Audius oracle
+// ============================================================
+
+// ---- INPUTS ------------------------------------------------
+input "rpc_url"       { value = env("SOLANA_RPC_URL") }
+input "deployer_key"  { value = env("DEPLOYER_KEYPAIR_PATH") }
+input "audius_oracle" { value = env("AUDIUS_ORACLE_PUBKEY") }
+input "platform_wallet" { value = env("PLATFORM_WALLET_PUBKEY") }
+input "platform_fee_bps" { value = 250 }   // 2.5% platform cut
+
+// ---- NETWORK -----------------------------------------------
+signer "deployer" "svm::keypair" {
+  keypair = input.deployer_key
+}
+
+action "deploy_program" "svm::deploy_program" {
+  description = "Deploy WaveWarz Dynamic NFT program"
+  rpc_api_url = input.rpc_url
+  signer      = signer.deployer
+
+  program_id        = "WVWZdynNFT111111111111111111111111111111111"
+  artifact_path     = "./target/deploy/wavewarz_dynamic_nft.so"
+  idl_path          = "./target/idl/wavewarz_dynamic_nft.json"
+  upgrade_authority = signer.deployer
+}
+
+// ---- INITIALIZE CONFIG ------------------------------------
+action "init_config" "svm::call_contract" {
+  description = "Initialize program config PDA"
+  rpc_api_url = input.rpc_url
+  signer      = signer.deployer
+  depends_on  = [action.deploy_program]
+
+  contract_id    = action.deploy_program.program_id
+  function_name  = "initialize_config"
+  function_args  = [
+    input.platform_fee_bps,
+    input.audius_oracle,
+  ]
+
+  // PDA seeds: ["config"]
+  accounts = [
+    { name = "config",         is_pda = true, seeds = ["config"] },
+    { name = "authority",      signer = signer.deployer },
+    { name = "system_program", pubkey = "11111111111111111111111111111111" },
+  ]
+}
+
+// ---- REGISTER AUDIUS ORACLE --------------------------------
+// The oracle is a separate off-chain service that reads the
+// Audius API and signs update_stream_data transactions.
+// See: audius_oracle.ts for the oracle implementation.
+output "audius_oracle_address" {
+  value       = input.audius_oracle
+  description = "Audius oracle public key registered in config"
+}
+
+output "program_id" {
+  value       = action.deploy_program.program_id
+  description = "Deployed WaveWarz Dynamic NFT program ID"
+}
+
+output "config_pda" {
+  value       = action.init_config.accounts.config
+  description = "Program config PDA address"
+}
+
+// ---- EXAMPLE: CREATE A BATTLE ------------------------------
+// Uncomment to deploy a test battle after program init.
+//
+// action "create_test_battle" "svm::call_contract" {
+//   description = "Create demo WaveWarz battle #1"
+//   rpc_api_url = input.rpc_url
+//   signer      = signer.deployer
+//   depends_on  = [action.init_config]
+//
+//   contract_id   = action.deploy_program.program_id
+//   function_name = "create_battle"
+//   function_args = [
+//     1,                                      // battle_id
+//     "ArtistAWallet111111111111111111111111", // artist_a pubkey
+//     "ArtistBWallet111111111111111111111111", // artist_b pubkey
+//     "audius:track:123456",                  // audius_track_id_a
+//     "audius:track:789012",                  // audius_track_id_b
+//     1_740_000_000,                          // start_time (unix)
+//     1_740_086_400,                          // end_time (unix, +24h)
+//     500,                                    // royalty_bps_a = 5%
+//     300,                                    // royalty_bps_b = 3%
+//   ]
+//   accounts = [
+//     { name = "battle",   is_pda = true, seeds = ["battle", bytes(1)] },
+//     { name = "config",   is_pda = true, seeds = ["config"] },
+//     { name = "authority", signer = signer.deployer },
+//     { name = "system_program", pubkey = "11111111111111111111111111111111" },
+//   ]
+// }

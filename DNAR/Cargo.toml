@@ -1,0 +1,25 @@
+[package]
+name    = "wavewarz-dynamic-nft"
+version = "0.1.0"
+edition = "2021"
+description = "WaveWarz Dynamic NFT – SVM/Solana | Metaplex | Audius | txtx"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "wavewarz_dynamic_nft"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+anchor-lang        = { version = "0.29.0", features = ["init-if-needed"] }
+anchor-spl         = { version = "0.29.0", features = ["token"] }
+mpl-token-metadata = { version = "3.2.3" }
+solana-program     = "1.18"
+
+[dev-dependencies]
+anchor-client = "0.29.0"

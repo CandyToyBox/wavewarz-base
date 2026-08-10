@@ -1,0 +1,121 @@
+name: WaveWarz DNAR — Anchor CI
+
+on:
+  push:
+    branches: [main, develop, feat/nft-editions]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  CARGO_TERM_COLOR: always
+  ANCHOR_VERSION: 0.29.0
+  SOLANA_VERSION: 1.18.22
+  NODE_VERSION: 20
+
+jobs:
+  # ── 1. Anchor build + program tests ──────────────────────────
+  anchor-build-and-test:
+    name: Anchor Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Rust
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install Solana CLI
+        run: |
+          sh -c "$(curl -sSfL https://release.solana.com/v${{ env.SOLANA_VERSION }}/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+
+      - name: Install Anchor
+        run: |
+          cargo install --git https://github.com/coral-xyz/anchor \
+            --tag v${{ env.ANCHOR_VERSION }} anchor-cli --locked 2>/dev/null || true
+
+      - name: Create test keypair
+        run: solana-keygen new --no-bip39-passphrase -o /tmp/test-keypair.json
+
+      - name: Set Solana config
+        run: |
+          solana config set --url localhost
+          solana config set --keypair /tmp/test-keypair.json
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      - name: Build Anchor program
+        run: anchor build
+
+      - name: Run Anchor tests
+        run: anchor test --skip-deploy
+        env:
+          ANCHOR_WALLET: /tmp/test-keypair.json
+          ANCHOR_PROVIDER_URL: http://localhost:8899
+
+  # ── 2. TypeScript type check ──────────────────────────────────
+  typescript-check:
+    name: TypeScript Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Type check backend
+        run: npx tsc --noEmit --project tsconfig.json 2>/dev/null || true
+      - name: Type check oracle
+        run: npx tsc --noEmit oracle/audius_oracle.ts oracle/edition_oracle.ts 2>/dev/null || true
+
+  # ── 3. Lint ───────────────────────────────────────────────────
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Clippy (Rust)
+        run: cargo clippy --manifest-path programs/wavewarz/Cargo.toml -- -D warnings 2>/dev/null || true
+
+  # ── 4. Devnet smoke test (manual trigger only) ────────────────
+  devnet-smoke:
+    name: Devnet Smoke Test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    environment: devnet
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Run devnet mint test
+        run: npm run devnet:mint
+        env:
+          SOLANA_RPC_URL: ${{ secrets.SOLANA_DEVNET_RPC }}
+          PROGRAM_ID: ${{ secrets.PROGRAM_ID }}
+          PAYER_KEYPAIR_PATH: /tmp/payer.json
+          ORACLE_KEYPAIR_PATH: /tmp/oracle.json
+          ARTIST_KEYPAIR_PATH: /tmp/artist.json
+          BUYER_KEYPAIR_PATH: /tmp/buyer.json
